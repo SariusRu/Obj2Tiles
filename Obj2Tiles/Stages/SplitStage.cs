@@ -37,7 +37,10 @@ public static partial class StagesFacade
         return tasks.Select(task => task.Result).ToArray();
     }
 
-    public static async Task<Dictionary<string, Box3>> Split(string sourcePath, string destPath, int divisions,
+    public static async Task<Dictionary<string, Box3>> Split(
+        string sourcePath,
+        string destPath,
+        int divisions,
         bool zSplit = false,
         Box3? bounds = null,
         TexturesStrategy textureStrategy = TexturesStrategy.Repack,
@@ -108,8 +111,11 @@ public static partial class StagesFacade
         sw.Restart();
 
         var ms = meshes.ToArray();
+
+        int total2 = ms.Length;
         for (var index = 0; index < ms.Length; index++)
         {
+            InformationOutput.percent(index, total2, "Writing meshes");
             var m = ms[index];
 
             if (m is MeshT t)
