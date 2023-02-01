@@ -18,7 +18,7 @@ public class MeshUtils
 
         var vertices = new List<Vertex3>();
         var textureVertices = new List<Vertex2>();
-        var facesT = new List<FaceT>();
+        var facesT = new List<Face>();
         var faces = new List<Face>();
         var materials = new List<Material>();
         var materialsDict = new Dictionary<string, int>();
@@ -45,13 +45,16 @@ public class MeshUtils
                         double.Parse(segs[3], CultureInfo.InvariantCulture)));
                     break;
                 case "vt" when segs.Length >= 3:
-
                     var vtx = new Vertex2(
                         double.Parse(segs[1], CultureInfo.InvariantCulture),
                         double.Parse(segs[2], CultureInfo.InvariantCulture));
-                    
+
                     if (vtx.X < 0 || vtx.Y < 0 || vtx.X > 1 || vtx.Y > 1)
-                        throw new Exception("Invalid texture coordinates: " + vtx);
+                    {
+                        vtx = new Vertex2(0.5, 0.5);
+                        //throw new Exception("Invalid texture coordinates: " + vtx);
+                    }
+                        
                     
                     textureVertices.Add(vtx);
                     break;
@@ -88,7 +91,7 @@ public class MeshUtils
                         var vt2 = int.Parse(second[1]);
                         var vt3 = int.Parse(third[1]);
 
-                        var faceT = new FaceT(
+                        var faceT = new Face(
                             v1 - 1,
                             v2 - 1,
                             v3 - 1,

@@ -895,10 +895,16 @@ public class MeshT : MeshBase, IMesh
 
     public void WriteObj(string path, bool removeUnused = true)
     {
+        if (removeUnused)
+        {
+            Console.WriteLine("Removing Vertices");
+            RemoveUnusedVerticesAndUvs();
+        }
+        
         if (!_materials.Any() || !_textureVertices.Any())
-            _WriteObjWithoutTexture(path, removeUnused);
+            _WriteObjWithoutTexture(path);
         else
-            _WriteObjWithTexture(path, removeUnused);
+            _WriteObjWithTexture(path);
     }
 
     private void RemoveUnusedVertices()
@@ -932,6 +938,7 @@ public class MeshT : MeshBase, IMesh
         _vertices = newVertexes.Keys.ToList();
     }
 
+    //TODO: Validate
     private void RemoveUnusedVerticesAndUvs()
     {
         var newVertexes = new Dictionary<Vertex3, int>(_vertices.Count);
@@ -940,58 +947,66 @@ public class MeshT : MeshBase, IMesh
 
         for (var f = 0; f < _faces.Count; f++)
         {
-            var face = _faces[f];
+            try
+            {
+                var face = _faces[f];
 
-            // Vertices
+                // Vertices
 
-            var vA = _vertices[face.IndexA];
-            var vB = _vertices[face.IndexB];
-            var vC = _vertices[face.IndexC];
+                var vA = _vertices[face.IndexA];
+                var vB = _vertices[face.IndexB];
+                var vC = _vertices[face.IndexC];
 
-            if (!newVertexes.TryGetValue(vA, out var newVA))
-                newVA = newVertexes.AddIndex(vA);
+                if (!newVertexes.TryGetValue(vA, out var newVA))
+                    newVA = newVertexes.AddIndex(vA);
 
-            face.IndexA = newVA;
+                face.IndexA = newVA;
 
-            if (!newVertexes.TryGetValue(vB, out var newVB))
-                newVB = newVertexes.AddIndex(vB);
+                if (!newVertexes.TryGetValue(vB, out var newVB))
+                    newVB = newVertexes.AddIndex(vB);
 
-            face.IndexB = newVB;
+                face.IndexB = newVB;
 
-            if (!newVertexes.TryGetValue(vC, out var newVC))
-                newVC = newVertexes.AddIndex(vC);
+                if (!newVertexes.TryGetValue(vC, out var newVC))
+                    newVC = newVertexes.AddIndex(vC);
 
-            face.IndexC = newVC;
+                face.IndexC = newVC;
 
-            // Texture vertices
+                // Texture vertices
 
-            var uvA = _textureVertices[face.TextureIndexA];
-            var uvB = _textureVertices[face.TextureIndexB];
-            var uvC = _textureVertices[face.TextureIndexC];
+                var uvA = _textureVertices[face.TextureIndexA];
+                var uvB = _textureVertices[face.TextureIndexB];
+                var uvC = _textureVertices[face.TextureIndexC];
 
-            if (!newUvs.TryGetValue(uvA, out var newUvA))
-                newUvA = newUvs.AddIndex(uvA);
+                if (!newUvs.TryGetValue(uvA, out var newUvA))
+                    newUvA = newUvs.AddIndex(uvA);
 
-            face.TextureIndexA = newUvA;
+                face.TextureIndexA = newUvA;
 
-            if (!newUvs.TryGetValue(uvB, out var newUvB))
-                newUvB = newUvs.AddIndex(uvB);
+                if (!newUvs.TryGetValue(uvB, out var newUvB))
+                    newUvB = newUvs.AddIndex(uvB);
 
-            face.TextureIndexB = newUvB;
+                face.TextureIndexB = newUvB;
 
-            if (!newUvs.TryGetValue(uvC, out var newUvC))
-                newUvC = newUvs.AddIndex(uvC);
+                if (!newUvs.TryGetValue(uvC, out var newUvC))
+                    newUvC = newUvs.AddIndex(uvC);
 
-            face.TextureIndexC = newUvC;
+                face.TextureIndexC = newUvC;
 
-            // Materials
+                // Materials
 
-            var material = _materials[face.MaterialIndex];
+                var material = _materials[face.MaterialIndex];
 
-            if (!newMaterials.TryGetValue(material, out var newMaterial))
-                newMaterial = newMaterials.AddIndex(material);
+                if (!newMaterials.TryGetValue(material, out var newMaterial))
+                    newMaterial = newMaterials.AddIndex(material);
 
-            face.MaterialIndex = newMaterial;
+                face.MaterialIndex = newMaterial;
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine("Failed: " + ex.Message);
+            }
+            
         }
 
         _vertices = newVertexes.Keys.ToList();
@@ -1000,15 +1015,18 @@ public class MeshT : MeshBase, IMesh
     }
 
 
-    private void _WriteObjWithTexture(string path, bool removeUnused = true)
+    private void _WriteObjWithTexture(string path)
     {
-        if (removeUnused)
-            RemoveUnusedVerticesAndUvs();
 
         var materialsPath = Path.ChangeExtension(path, "mtl");
-
-        if (TexturesStrategy == TexturesStrategy.Repack || TexturesStrategy == TexturesStrategy.RepackCompressed)
-            TrimTextures(Path.GetDirectoryName(path));
+        
+        //TODO: WHY IS THIS TAKING SO LONG?
+        //if (TexturesStrategy == TexturesStrategy.Repack || TexturesStrategy == TexturesStrategy.RepackCompressed)
+        //{
+        //    Console.WriteLine("Trimming Textures");
+        //    TrimTextures(Path.GetDirectoryName(path));
+        //}
+            
 
         using (var writer = new FormattingStreamWriter(path, CultureInfo.InvariantCulture))
         {
@@ -1105,11 +1123,8 @@ public class MeshT : MeshBase, IMesh
         }
     }
 
-    private void _WriteObjWithoutTexture(string path, bool removeUnused = true)
+    private void _WriteObjWithoutTexture(string path)
     {
-        if (removeUnused)
-            RemoveUnusedVertices();
-
         using var writer = new FormattingStreamWriter(path, CultureInfo.InvariantCulture);
 
         writer.Write("o ");

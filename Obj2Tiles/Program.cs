@@ -5,10 +5,13 @@ using System.Diagnostics;
 using System.Reflection;
 using CommandLine;
 using CommandLine.Text;
+using log4net.Config;
+using log4net;
 using Obj2Tiles.Library;
 using Obj2Tiles.Library.Geometry;
 using Obj2Tiles.Stages;
 using Obj2Tiles.Stages.Model;
+using Obj2Tiles.Common;
 
 namespace Obj2Tiles
 {
@@ -30,7 +33,19 @@ namespace Obj2Tiles
             Console.WriteLine(" *** OBJ to Tiles ***");
             Console.WriteLine();
 
-            if (!CheckOptions(opts)) return;
+            Console.WriteLine("=> Configuring Log4Net and swtiching to Log4Net for output");
+            var logRepository = LogManager.GetRepository(Assembly.GetEntryAssembly());
+            XmlConfigurator.Configure(logRepository, new FileInfo("log4net.config"));
+            var _logger = LogManager.GetLogger(MethodBase.GetCurrentMethod()?.DeclaringType);
+
+            _logger.Info("Switched to Log4Net");
+
+            if (!CheckOptions(opts))
+            {
+                _logger.Error("Some options are wrong");
+                return;
+            }
+            
 
             opts.Output = Path.GetFullPath(opts.Output);
             opts.Input = Path.GetFullPath(opts.Input);
@@ -50,20 +65,23 @@ namespace Obj2Tiles
 
             try
             {
-               
+
+                #region Decimation
                 destFolderDecimation = opts.StopAt == Stage.Decimation
                     ? opts.Output
                     : createTempFolder($"{pipelineId}-obj2tiles-decimation");
 
-                Console.WriteLine($" => Decimation stage with {opts.LODs} LODs");
+                _logger.Info($"Decimation stage with {opts.LoDs} LODs");
                 sw.Start();
 
-                var decimateRes = await StagesFacade.Decimate(opts.Input, destFolderDecimation, opts.LODs);
+                var decimateRes = await StagesFacade.Decimate(opts.Input, destFolderDecimation, opts.LoDs);
 
                 Console.WriteLine(" ?> Decimation stage done in {0}", sw.Elapsed);
 
                 if (opts.StopAt == Stage.Decimation)
                     return;
+
+                #endregion
 
                 Console.WriteLine();
                 Console.WriteLine(
@@ -90,7 +108,7 @@ namespace Obj2Tiles
 
                 sw.Restart();
 
-                StagesFacade.Tile(destFolderSplit, opts.Output, opts.LODs, boundsMapper, gpsCoords);
+                StagesFacade.Tile(destFolderSplit, opts.Output, opts.LoDs, boundsMapper, gpsCoords);
 
                 Console.WriteLine(" ?> Tiling stage done in {0}", sw.Elapsed);
             }
@@ -152,7 +170,7 @@ namespace Obj2Tiles
                 return false;
             }
             
-            if (opts.LODs < 1)
+            if (opts.LoDs < 1)
             {
                 Console.WriteLine(" !> LODs must be at least 1");
                 return false;

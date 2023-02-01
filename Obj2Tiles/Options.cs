@@ -1,4 +1,3 @@
-using System.Text.Json.Serialization;
 using CommandLine;
 
 namespace Obj2Tiles;
@@ -6,10 +5,10 @@ namespace Obj2Tiles;
 public class Options
 {
     [Value(0, MetaName = "Input", Required = true, HelpText = "Input OBJ file.")]
-    public string Input { get; set; }
+    public string Input { get; set; } = "";
 
     [Value(1, MetaName = "Output", Required = true, HelpText = "Output folder.")]
-    public string Output { get; set; }
+    public string Output { get; set; } = "";
 
     [Option('s', "stage", Required = false, HelpText = "Stage to stop at (Decimation, Splitting, Tiling)", Default = Stage.Tiling)]
     public Stage StopAt { get; set; }
@@ -21,7 +20,7 @@ public class Options
     public bool ZSplit { get; set; }    
     
     [Option('l', "lods", Required = false, HelpText = "How many levels of details", Default = 3)]
-    public int LODs { get; set; }
+    public int LoDs { get; set; }
 
     [Option('k', "keeptextures", Required = false, HelpText = "Keeps original textures", Default = false)]
     public bool KeepOriginalTextures { get; set; }

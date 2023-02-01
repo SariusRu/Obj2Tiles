@@ -118,8 +118,13 @@ public static partial class StagesFacade
             InformationOutput.percent(index, total2, "Writing meshes");
             var m = ms[index];
 
+            
+            //TODO: WHEN IS DECIDED IF SOMETHING IS MESH AND MESHT? WHY DIFFERENT WRITERS?
             if (m is MeshT t)
+            {
+                Console.WriteLine("Mesh is of Type MeshT");
                 t.TexturesStrategy = textureStrategy;
+            }
 
             m.WriteObj(Path.Combine(destPath, $"{m.Name}.obj"));
 

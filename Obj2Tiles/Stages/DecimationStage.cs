@@ -1,9 +1,12 @@
 ﻿using System.Diagnostics;
+using log4net;
+using System.Reflection;
 using MeshDecimatorCore;
 using MeshDecimatorCore.Algorithms;
 using MeshDecimatorCore.Math;
 using Obj2Tiles.Stages.Model;
 using Mesh = MeshDecimatorCore.Mesh;
+using log4net.Repository.Hierarchy;
 
 namespace Obj2Tiles.Stages;
 
@@ -11,11 +14,17 @@ public static partial class StagesFacade
 {
     public static async Task<DecimateResult> Decimate(string sourcePath, string destPath, int lods)
     {
-        
+        var _logger = LogManager.GetLogger(MethodBase.GetCurrentMethod()?.DeclaringType);
+
+        _logger.Info("Calculating Quality");
         var qualities = Enumerable.Range(0, lods - 1).Select(i => 1.0f - ((i + 1) / (float)lods)).ToArray();
 
+        _logger.Info("Calculating Quality completed");
+
+        _logger.Info("Loading File");
         var sourceObjMesh = new ObjMesh();
         sourceObjMesh.ReadFile(sourcePath);
+        _logger.Info("File loaded");
         var bounds = sourceObjMesh.Bounds;
 
         var fileName = Path.GetFileName(sourcePath);
@@ -25,7 +34,12 @@ public static partial class StagesFacade
         var destFiles = new List<string> { originalSourceFile };
 
         var tasks = new List<Task>();
-        
+
+        //Serialized for now
+        //TODO: Option
+        bool serialized = true;
+        _logger.Info("Running in serialized Mode");
+
         for (var index = 0; index < qualities.Length; index++)
         {
             var quality = qualities[index];
@@ -34,26 +48,38 @@ public static partial class StagesFacade
             if (File.Exists(destFile))
                 File.Delete(destFile);
 
-            Console.WriteLine(" -> Decimating mesh {0} with quality {1:0.00}", fileName, quality);
+            _logger.Info(string.Format("Decimating mesh {0} with quality {1}", fileName, quality));
 
-            tasks.Add(Task.Run(() => InternalDecimate(sourceObjMesh, destFile, quality)));
+           
+
             
+
+            if (serialized)
+            {
+                Task decimation = Task.Run(() => InternalDecimate(sourceObjMesh, destFile, quality, _logger));
+                decimation.Wait();
+                _logger.Info("Completed Decimation for Quqality " + quality);
+            }
+            else
+            {
+                tasks.Add(Task.Run(() => InternalDecimate(sourceObjMesh, destFile, quality, _logger)));
+            }
             destFiles.Add(destFile);
         }
 
         await Task.WhenAll(tasks);
-        Console.WriteLine(" ?> Decimation done");
-        
-        Console.WriteLine(" -> Copying obj dependencies");
+        _logger.Info("Decimation done");
+
+        _logger.Info("Copying obj dependencies");
         Utils.CopyObjDependencies(sourcePath, destPath);
-        Console.WriteLine(" ?> Dependencies copied");
+        _logger.Info("Dependencies copied");
 
         return new DecimateResult { DestFiles = destFiles.ToArray(), Bounds = bounds };
 
     }
 
 
-    private static void InternalDecimate(ObjMesh sourceObjMesh, string destPath, float quality)
+    private static void InternalDecimate(ObjMesh sourceObjMesh, string destPath, float quality, ILog _logger)
     {
         quality = MathHelper.Clamp01(quality);
         var sourceVertices = sourceObjMesh.Vertices;
@@ -62,10 +88,14 @@ public static partial class StagesFacade
         var sourceTexCoords3D = sourceObjMesh.TexCoords3D;
         var sourceSubMeshIndices = sourceObjMesh.SubMeshIndices;
 
+        _logger.Info(quality + ": Setting Meshes");
+
         var sourceMesh = new Mesh(sourceVertices, sourceSubMeshIndices)
         {
             Normals = sourceNormals
         };
+
+        _logger.Info(quality + ": Setting UVs");
 
         if (sourceTexCoords2D != null)
         {
@@ -76,6 +106,7 @@ public static partial class StagesFacade
             sourceMesh.SetUVs(0, sourceTexCoords3D);
         }
 
+
         var currentTriangleCount = 0;
         for (var i = 0; i < sourceSubMeshIndices.Length; i++)
         {
@@ -83,12 +114,14 @@ public static partial class StagesFacade
         }
 
         var targetTriangleCount = (int)Math.Ceiling(currentTriangleCount * quality);
-        Console.WriteLine(" ?> Input: {0} vertices, {1} triangles (target {2})",
-            sourceVertices.Length, currentTriangleCount, targetTriangleCount);
+        _logger.Info(string.Format(quality + ": Input: {0} vertices, {1} triangles (target {2})",
+            sourceVertices.Length, currentTriangleCount, targetTriangleCount));
 
         var stopwatch = new Stopwatch();
         stopwatch.Reset();
         stopwatch.Start();
+
+        _logger.Info(quality + ": Creating Mesh Simplification");
 
         var algorithm = new FastQuadricMeshSimplification
         {
@@ -97,6 +130,8 @@ public static partial class StagesFacade
             PreserveBorders = true
         };
 
+        _logger.Info(quality + ": Decimating Mesh");
+
         var destMesh = MeshDecimation.DecimateMesh(algorithm, sourceMesh, targetTriangleCount);
         stopwatch.Stop();
 
@@ -104,12 +139,16 @@ public static partial class StagesFacade
         var destNormals = destMesh.Normals;
         var destIndices = destMesh.GetSubMeshIndices();
 
+        _logger.Info(quality + ": Creating Mesh");
+
         var destObjMesh = new ObjMesh(destVertices, destIndices)
         {
             Normals = destNormals,
             MaterialLibraries = sourceObjMesh.MaterialLibraries,
             SubMeshMaterials = sourceObjMesh.SubMeshMaterials
         };
+
+        _logger.Info(quality + ": Adding Texture Coordinates");
 
         if (sourceTexCoords2D != null)
         {
@@ -122,6 +161,8 @@ public static partial class StagesFacade
             destObjMesh.TexCoords3D = destUVs;
         }
 
+        _logger.Info(quality + ": Writing to File");
+
         destObjMesh.WriteFile(destPath);
 
         var outputTriangleCount = 0;
@@ -132,8 +173,8 @@ public static partial class StagesFacade
 
         var reduction = (float)outputTriangleCount / currentTriangleCount;
         var timeTaken = (float)stopwatch.Elapsed.TotalSeconds;
-        Console.WriteLine(" ?> Output: {0} vertices, {1} triangles ({2} reduction; {3:0.0000} sec)",
-            destVertices.Length, outputTriangleCount, reduction, timeTaken);
+        _logger.Info(string.Format(quality + ": Output: {0} vertices, {1} triangles ({2} reduction; {3:0.0000} sec)",
+            destVertices.Length, outputTriangleCount, reduction, timeTaken));
     }
 
 }

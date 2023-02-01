@@ -10,6 +10,7 @@ using SixLabors.ImageSharp;
 using SixLabors.ImageSharp.Processing;
 using SixLabors.ImageSharp.PixelFormats;
 using Path = System.IO.Path;
+using TexturesStrategy = Obj2Tiles.Common.TexturesStrategy;
 
 namespace Obj2Tiles.Library.Test;
 
