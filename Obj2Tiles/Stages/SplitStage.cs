@@ -2,8 +2,8 @@
 using System.Diagnostics;
 using System.Text.Json;
 using Obj2Tiles.Common;
+using Obj2Tiles.Library;
 using Obj2Tiles.Library.Geometry;
-using TexturesStrategy = Obj2Tiles.Library.Geometry.TexturesStrategy;
 
 namespace Obj2Tiles.Stages;
 

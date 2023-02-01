@@ -1,4 +1,4 @@
-﻿namespace Obj2Tiles.Common;
+﻿namespace Obj2Tiles.Library;
 
 public enum TexturesStrategy
 {

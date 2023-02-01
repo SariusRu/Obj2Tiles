@@ -1,6 +1,5 @@
 ﻿using System.Diagnostics;
 using System.Globalization;
-using System.Numerics;
 using Obj2Tiles.Library.Algos;
 using Obj2Tiles.Library.Materials;
 using SixLabors.ImageSharp;
@@ -1152,12 +1151,4 @@ public class MeshT : MeshBase, IMesh
     public int VertexCount => _vertices.Count;
 
     #endregion
-}
-
-public enum TexturesStrategy
-{
-    KeepOriginal,
-    Compress,
-    Repack,
-    RepackCompressed
 }
