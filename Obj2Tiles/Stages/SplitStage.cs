@@ -1,7 +1,9 @@
 ﻿using System.Collections.Concurrent;
 using System.Diagnostics;
 using System.Text.Json;
+using Obj2Tiles.Common;
 using Obj2Tiles.Library.Geometry;
+using TexturesStrategy = Obj2Tiles.Library.Geometry.TexturesStrategy;
 
 namespace Obj2Tiles.Stages;
 
@@ -13,8 +15,11 @@ public static partial class StagesFacade
       
         var tasks = new List<Task<Dictionary<string, Box3>>>();
 
+        int total = sourceFiles.Length;
+        
         for (var index = 0; index < sourceFiles.Length; index++)
         {
+            InformationOutput.percent(index, total, "Split File");
             var file = sourceFiles[index];
             var dest = Path.Combine(destFolder, "LOD-" + index);
             
