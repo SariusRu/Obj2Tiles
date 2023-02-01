@@ -6,17 +6,11 @@ using SixLabors.ImageSharp;
 
 namespace Obj2Tiles.Library.Geometry;
 
-public class Mesh : IMesh
+public class Mesh : MeshBase, IMesh
 {
-    private List<Vertex3> _vertices;
     private readonly List<Face> _faces;
-
-    public IReadOnlyList<Vertex3> Vertices => _vertices;
+    
     public IReadOnlyList<Face> Faces => _faces;
-
-    public const string DefaultName = "Mesh";
-
-    public string Name { get; set; } = DefaultName;
 
     public Mesh(IEnumerable<Vertex3> vertices, IEnumerable<Face> faces)
     {
@@ -297,12 +291,7 @@ public class Mesh : IMesh
         for (var index = 0; index < _vertices.Count; index++)
         {
             var vertex = _vertices[index];
-            writer.Write("v ");
-            writer.Write(vertex.X);
-            writer.Write(" ");
-            writer.Write(vertex.Y);
-            writer.Write(" ");
-            writer.WriteLine(vertex.Z);
+            writer.WriteLine(vertex.ToObj());
         }
 
         for (var index = 0; index < _faces.Count; index++)

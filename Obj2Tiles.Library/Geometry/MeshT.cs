@@ -10,30 +10,23 @@ using Path = System.IO.Path;
 
 namespace Obj2Tiles.Library.Geometry;
 
-public class MeshT : IMesh
+public class MeshT : MeshBase, IMesh
 {
-    private List<Vertex3> _vertices;
     private List<Vertex2> _textureVertices;
-    private readonly List<FaceT> _faces;
+    private readonly List<Face> _faces;
     private List<Material> _materials;
-
-    public IReadOnlyList<Vertex3> Vertices => _vertices;
     public IReadOnlyList<Vertex2> TextureVertices => _textureVertices;
-    public IReadOnlyList<FaceT> Faces => _faces;
+    public IReadOnlyList<Face> Faces => _faces;
     public IReadOnlyList<Material> Materials => _materials;
-
-    public const string DefaultName = "Mesh";
-
-    public string Name { get; set; } = DefaultName;
 
     public TexturesStrategy TexturesStrategy { get; set; }
 
     public MeshT(IEnumerable<Vertex3> vertices, IEnumerable<Vertex2> textureVertices,
-        IEnumerable<FaceT> faces, IEnumerable<Material> materials)
+        IEnumerable<Face> faces, IEnumerable<Material> materials)
     {
         _vertices = new List<Vertex3>(vertices);
         _textureVertices = new List<Vertex2>(textureVertices);
-        _faces = new List<FaceT>(faces);
+        _faces = new List<Face>(faces);
         _materials = new List<Material>(materials);
     }
 
@@ -43,8 +36,8 @@ public class MeshT : IMesh
         var leftVertices = new Dictionary<Vertex3, int>(_vertices.Count);
         var rightVertices = new Dictionary<Vertex3, int>(_vertices.Count);
 
-        var leftFaces = new List<FaceT>(_faces.Count);
-        var rightFaces = new List<FaceT>(_faces.Count);
+        var leftFaces = new List<Face>(_faces.Count);
+        var rightFaces = new List<Face>(_faces.Count);
 
         var leftTextureVertices = new Dictionary<Vertex2, int>(_textureVertices.Count);
         var rightTextureVertices = new Dictionary<Vertex2, int>(_textureVertices.Count);
@@ -83,7 +76,7 @@ public class MeshT : IMesh
                         var indexBTextureLeft = leftTextureVertices!.AddIndex(vtB);
                         var indexCTextureLeft = leftTextureVertices!.AddIndex(vtC);
 
-                        leftFaces.Add(new FaceT(indexALeft, indexBLeft, indexCLeft,
+                        leftFaces.Add(new Face(indexALeft, indexBLeft, indexCLeft,
                             indexATextureLeft, indexBTextureLeft, indexCTextureLeft,
                             face.MaterialIndex));
                     }
@@ -171,7 +164,7 @@ public class MeshT : IMesh
                         var indexBTextureRight = rightTextureVertices!.AddIndex(vtB);
                         var indexCTextureRight = rightTextureVertices!.AddIndex(vtC);
 
-                        rightFaces.Add(new FaceT(indexARight, indexBRight, indexCRight,
+                        rightFaces.Add(new Face(indexARight, indexBRight, indexCRight,
                             indexATextureRight, indexBTextureRight, indexCTextureRight,
                             face.MaterialIndex));
                     }
@@ -204,7 +197,7 @@ public class MeshT : IMesh
         IDictionary<Vertex3, int> leftVertices, IDictionary<Vertex3, int> rightVertices,
         int indexTextureVL, int indexTextureVR1, int indexTextureVR2,
         IDictionary<Vertex2, int> leftTextureVertices, IDictionary<Vertex2, int> rightTextureVertices,
-        int materialIndex, ICollection<FaceT> leftFaces, ICollection<FaceT> rightFaces)
+        int materialIndex, ICollection<Face> leftFaces, ICollection<Face> rightFaces)
     {
         var vL = _vertices[indexVL];
         var vR1 = _vertices[indexVR1];
@@ -228,7 +221,7 @@ public class MeshT : IMesh
             var indexTextureVR1Left = leftTextureVertices.AddIndex(tVR1);
             var indexTextureVR2Left = leftTextureVertices.AddIndex(tVR2);
 
-            leftFaces.Add(new FaceT(indexVLLeft, indexVR1Left, indexVR2Left,
+            leftFaces.Add(new Face(indexVLLeft, indexVR1Left, indexVR2Left,
                 indexTextureVLLeft, indexTextureVR1Left, indexTextureVR2Left, materialIndex));
 
             return;
@@ -267,15 +260,15 @@ public class MeshT : IMesh
         var indexTextureT2Left = leftTextureVertices.AddIndex(t2t);
         var indexTextureT2Right = rightTextureVertices.AddIndex(t2t);
 
-        var lface = new FaceT(indexVLLeft, indexT1Left, indexT2Left,
+        var lface = new Face(indexVLLeft, indexT1Left, indexT2Left,
             indexTextureVLLeft, indexTextureT1Left, indexTextureT2Left, materialIndex);
         leftFaces.Add(lface);
 
-        var rface1 = new FaceT(indexT1Right, indexVR1Right, indexVR2Right,
+        var rface1 = new Face(indexT1Right, indexVR1Right, indexVR2Right,
             indexTextureT1Right, indexTextureVR1Right, indexTextureVR2Right, materialIndex);
         rightFaces.Add(rface1);
 
-        var rface2 = new FaceT(indexT1Right, indexVR2Right, indexT2Right,
+        var rface2 = new Face(indexT1Right, indexVR2Right, indexT2Right,
             indexTextureT1Right, indexTextureVR2Right, indexTextureT2Right, materialIndex);
         rightFaces.Add(rface2);
     }
@@ -285,7 +278,7 @@ public class MeshT : IMesh
         IDictionary<Vertex3, int> leftVertices, IDictionary<Vertex3, int> rightVertices,
         int indexTextureVR, int indexTextureVL1, int indexTextureVL2,
         IDictionary<Vertex2, int> leftTextureVertices, IDictionary<Vertex2, int> rightTextureVertices,
-        int materialIndex, ICollection<FaceT> leftFaces, ICollection<FaceT> rightFaces)
+        int materialIndex, ICollection<Face> leftFaces, ICollection<Face> rightFaces)
     {
         var vR = _vertices[indexVR];
         var vL1 = _vertices[indexVL1];
@@ -309,7 +302,7 @@ public class MeshT : IMesh
             var indexTextureVL1Right = rightTextureVertices.AddIndex(tVL1);
             var indexTextureVL2Right = rightTextureVertices.AddIndex(tVL2);
 
-            rightFaces.Add(new FaceT(indexVRRight, indexVL1Right, indexVL2Right,
+            rightFaces.Add(new Face(indexVRRight, indexVL1Right, indexVL2Right,
                 indexTextureVRRight, indexTextureVL1Right, indexTextureVL2Right, materialIndex));
 
             return;
@@ -348,15 +341,15 @@ public class MeshT : IMesh
         var indexTextureT2Left = leftTextureVertices.AddIndex(t2t);
         var indexTextureT2Right = rightTextureVertices.AddIndex(t2t);
 
-        var rface = new FaceT(indexVRRight, indexT1Right, indexT2Right,
+        var rface = new Face(indexVRRight, indexT1Right, indexT2Right,
             indexTextureVRRight, indexTextureT1Right, indexTextureT2Right, materialIndex);
         rightFaces.Add(rface);
 
-        var lface1 = new FaceT(indexT2Left, indexVL1Left, indexVL2Left,
+        var lface1 = new Face(indexT2Left, indexVL1Left, indexVL2Left,
             indexTextureT2Left, indexTextureVL1Left, indexTextureVL2Left, materialIndex);
         leftFaces.Add(lface1);
 
-        var lface2 = new FaceT(indexT2Left, indexT1Left, indexVL1Left,
+        var lface2 = new Face(indexT2Left, indexT1Left, indexVL1Left,
             indexTextureT2Left, indexTextureT1Left, indexTextureVL1Left, materialIndex);
         leftFaces.Add(lface2);
     }
