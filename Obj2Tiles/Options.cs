@@ -4,7 +4,7 @@ namespace Obj2Tiles;
 
 public class Options
 {
-    [Value(0, MetaName = "Input", Required = true, HelpText = "Input OBJ file.")]
+    [Value(0, MetaName = "Input", Required = true, HelpText = "Input OBJ or CSV file")]
     public string Input { get; set; } = "";
 
     [Value(1, MetaName = "Output", Required = true, HelpText = "Output folder.")]

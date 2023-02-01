@@ -1,17 +1,11 @@
-﻿using System;
-using System.Collections.Concurrent;
-using System.ComponentModel.DataAnnotations;
-using System.Diagnostics;
+﻿using System.Diagnostics;
 using System.Reflection;
 using CommandLine;
-using CommandLine.Text;
 using log4net.Config;
 using log4net;
 using Obj2Tiles.Library;
-using Obj2Tiles.Library.Geometry;
 using Obj2Tiles.Stages;
 using Obj2Tiles.Stages.Model;
-using Obj2Tiles.Common;
 
 namespace Obj2Tiles
 {
@@ -36,13 +30,13 @@ namespace Obj2Tiles
             Console.WriteLine("=> Configuring Log4Net and swtiching to Log4Net for output");
             var logRepository = LogManager.GetRepository(Assembly.GetEntryAssembly());
             XmlConfigurator.Configure(logRepository, new FileInfo("log4net.config"));
-            var _logger = LogManager.GetLogger(MethodBase.GetCurrentMethod()?.DeclaringType);
+            ILog logger = LogManager.GetLogger(MethodBase.GetCurrentMethod()?.DeclaringType);
 
-            _logger.Info("Switched to Log4Net");
+            logger.Info("Switched to Log4Net");
 
             if (!CheckOptions(opts))
             {
-                _logger.Error("Some options are wrong");
+                logger.Error("Some options are wrong");
                 return;
             }
             
@@ -55,23 +49,32 @@ namespace Obj2Tiles
             var pipelineId = Guid.NewGuid().ToString();
             var sw = new Stopwatch();
             var swg = Stopwatch.StartNew();
-            
-            Func<string, string> createTempFolder = opts.UseSystemTempFolder
-                ? s => CreateTempFolder(s, Path.GetTempPath())
-                : s => CreateTempFolder(s, Path.Combine(opts.Output, ".temp"));
 
+            InputType type = CheckInputFile(opts.Input);
+
+            switch (type)
+            {
+                case InputType.CSV:
+                    break;
+                case InputType.OBJ:
+                    await ProcessObj(opts, pipelineId, logger, sw, swg);
+                    break;
+            }
+        }
+
+        private static async Task ProcessObj(Options opts, string pipelineId, ILog logger, Stopwatch sw, Stopwatch swg)
+        {
             string? destFolderDecimation = null;
             string? destFolderSplit = null;
-
             try
             {
 
                 #region Decimation
                 destFolderDecimation = opts.StopAt == Stage.Decimation
                     ? opts.Output
-                    : createTempFolder($"{pipelineId}-obj2tiles-decimation");
+                    : CreateTempFolder($"{pipelineId}-obj2tiles-decimation", opts);
 
-                _logger.Info($"Decimation stage with {opts.LoDs} LODs");
+                logger.Info($"Decimation stage with {opts.LoDs} LODs");
                 sw.Start();
 
                 var decimateRes = await StagesFacade.Decimate(opts.Input, destFolderDecimation, opts.LoDs);
@@ -89,7 +92,7 @@ namespace Obj2Tiles
 
                 destFolderSplit = opts.StopAt == Stage.Splitting
                     ? opts.Output
-                    : createTempFolder($"{pipelineId}-obj2tiles-split");
+                    : CreateTempFolder($"{pipelineId}-obj2tiles-split", opts);
 
                 var boundsMapper = await StagesFacade.Split(decimateRes.DestFiles, destFolderSplit, opts.Divisions,
                     opts.ZSplit, decimateRes.Bounds, opts.KeepOriginalTextures);
@@ -149,6 +152,19 @@ namespace Obj2Tiles
             }
         }
 
+        private static InputType CheckInputFile(string optsInput)
+        {
+            if (optsInput.EndsWith(".obj"))
+            {
+                return InputType.OBJ;
+            }
+            if (optsInput.EndsWith(".csv"))
+            {
+                return InputType.CSV;
+            }
+            throw new ArgumentException("Wrong Input-File");
+        }
+
         private static bool CheckOptions(Options opts)
        {
 
@@ -185,7 +201,21 @@ namespace Obj2Tiles
             return true;
         }
 
+        private static string CreateTempFolder(string folderName, Options opts)
+        {
+            string tempFolder;
+            if (opts.UseSystemTempFolder)
+            {
+                tempFolder = CreateTempFolder(folderName, Path.GetTempPath());
+            }
+            else
+            {
+                tempFolder = CreateTempFolder(folderName, Path.Combine(opts.Output, ".temp"));
+            }
 
+            return tempFolder;
+        }
+        
         private static string CreateTempFolder(string folderName, string baseFolder)
         {
             var tempFolder = Path.Combine(baseFolder, folderName);
