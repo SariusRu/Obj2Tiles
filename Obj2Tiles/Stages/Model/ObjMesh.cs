@@ -676,14 +676,8 @@ namespace Obj2Tiles.Stages.Model
         {
             for (int i = 0; i < vertices.Length; i++)
             {
-                var vertex = vertices[i];
-                writer.Write("v ");
-                writer.Write(vertex.x.ToString("g", CultureInfo.InvariantCulture));
-                writer.Write(' ');
-                writer.Write(vertex.y.ToString("g", CultureInfo.InvariantCulture));
-                writer.Write(' ');
-                writer.Write(vertex.z.ToString("g", CultureInfo.InvariantCulture));
-                writer.WriteLine();
+                Vector3d vertex = vertices[i];
+                writer.WriteLine(vertex.ToObj("v"));
             }
         }
 
@@ -694,14 +688,8 @@ namespace Obj2Tiles.Stages.Model
 
             for (int i = 0; i < normals.Length; i++)
             {
-                var normal = normals[i];
-                writer.Write("vn ");
-                writer.Write(normal.x.ToString("g", CultureInfo.InvariantCulture));
-                writer.Write(' ');
-                writer.Write(normal.y.ToString("g", CultureInfo.InvariantCulture));
-                writer.Write(' ');
-                writer.Write(normal.z.ToString("g", CultureInfo.InvariantCulture));
-                writer.WriteLine();
+                Vector3 normal = normals[i];
+                writer.WriteLine(normal.ToObj("vn"));
             }
         }
 

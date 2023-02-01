@@ -88,4 +88,9 @@ public class Vertex3
     {
         return new Vertex3((b.X - X) * perc + X, (b.Y - Y) * perc + Y, (b.Z - Z) * perc + Z);
     }
+
+    public string ToObj()
+    {
+        return "v " + X.ToString("g", CultureInfo.InvariantCulture) + " " + Y.ToString("g", CultureInfo.InvariantCulture) + " " + Z.ToString("g", CultureInfo.InvariantCulture);
+    }
 }

@@ -489,5 +489,11 @@ namespace MeshDecimatorCore.Math
         }
         #endregion
         #endregion
+        
+        public string ToObj(string type)
+        {
+            return type + " " + x.ToString("g", CultureInfo.InvariantCulture) + " " +
+                   y.ToString("g", CultureInfo.InvariantCulture) + " " + z.ToString("g", CultureInfo.InvariantCulture);
+        }
     }
 }
