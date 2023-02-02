@@ -1,5 +1,4 @@
-﻿using System.Diagnostics;
-using System.Reflection;
+﻿using System.Reflection;
 using CommandLine;
 using log4net;
 using log4net.Config;
@@ -44,55 +43,19 @@ internal class Program
         Directory.CreateDirectory(opts.Output);
 
         var pipelineId = Guid.NewGuid().ToString();
-        var sw = new Stopwatch();
-        var swg = Stopwatch.StartNew();
 
         var type = CheckInputFile(opts.Input);
 
         switch (type)
         {
             case InputType.CSV:
-                await ProcessCsv(opts, pipelineId, logger, sw, swg);
+                CsvProcessor processCsv = new CsvProcessor(opts, pipelineId);
+                await processCsv.Init();
                 break;
             case InputType.OBJ:
-                await ObjProcess.ProcessObj(opts, pipelineId, logger, sw, swg);
+                ObjProcessor processObj = new ObjProcessor(opts, pipelineId);
+                await processObj.Init();
                 break;
-        }
-    }
-
-    private static string AskUserInput(string message)
-    {
-        // Type your username and press enter
-        Console.WriteLine(message + ":");
-
-        var filepath = Console.ReadLine();
-
-        //Check if file exists
-        if (File.Exists(filepath) && filepath.EndsWith(".obj")) return filepath;
-        throw new ArgumentException("File does not exists");
-    }
-
-    private static async Task ProcessCsv(Options opts, string pipelineId, ILog logger, Stopwatch sw, Stopwatch swg)
-    {
-        string? destFolderDecimation = null;
-        string? destFolderSplit = null;
-
-        try
-        {
-            var processor = new CsvProcessor(opts.Input, opts);
-            processor.AnalyzeTypes();
-
-            foreach (var objectType in processor.Objects3D)
-            {
-                var file = AskUserInput("File for " + objectType.Key);
-                processor.Update3DModel(objectType.Key, file);
-            }
-
-            processor.TileObjects();
-        }
-        catch (Exception ex)
-        {
-            logger.Error(" !> Exception: {0}", ex);
         }
     }
 

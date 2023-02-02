@@ -1,13 +1,47 @@
 ﻿using System.Diagnostics;
+using System.Reflection;
 using log4net;
+using log4net.Config;
+using Obj2Tiles.Common;
+using Obj2Tiles.Library;
 using Obj2Tiles.Stages.Model;
 using StagesFacade = Obj2Tiles.Obj.Stages.StagesFacade;
 
 namespace Obj2Tiles.Obj;
 
-public class ObjProcess
+public class ObjProcessor : IProcessor
 {
-    public static async Task ProcessObj(string output, string input, Stage stopAt, string pipelineId,
+    private readonly ILog _logger;
+    private readonly Options _options;
+    private readonly string _id;
+
+    public ObjProcessor(Options opt, string pipelineId)
+    {
+        _options = opt;
+        _id = pipelineId;
+        var logRepository = LogManager.GetRepository(Assembly.GetEntryAssembly());
+        XmlConfigurator.Configure(logRepository, new FileInfo("log4net.config"));
+        _logger = LogManager.GetLogger(MethodBase.GetCurrentMethod()?.DeclaringType);
+    }
+    
+    public ObjProcessor(string pipelineId)
+    { 
+        _id = pipelineId;
+        var logRepository = LogManager.GetRepository(Assembly.GetEntryAssembly());
+        XmlConfigurator.Configure(logRepository, new FileInfo("log4net.config"));
+        _logger = LogManager.GetLogger(MethodBase.GetCurrentMethod()?.DeclaringType);
+    }
+
+    public async Task Init()
+    {
+        Stopwatch sw = new Stopwatch();
+        Stopwatch swg = Stopwatch.StartNew();
+        await ProcessObj(_options.Output, _options.Input, _options.StopAt, _id, _options.LoDs, _options.Divisions,
+            _options.KeepIntermediateFiles, _options.ZSplit, _options.Latitude, _options.Longitude, _options.Altitude,
+            _options.UseSystemTempFolder, sw, swg, _logger);
+    }
+
+    public async Task<string> ProcessObj(string output, string input, Stage stopAt, string pipelineId,
         int lod, int division, bool keepIntermediate, bool splitZ, double? latitude, double? longitude, double altitude,
         bool useSystem, Stopwatch sw,
         Stopwatch swg, ILog logger)
@@ -20,7 +54,7 @@ public class ObjProcess
 
             destFolderDecimation = stopAt == Stage.Decimation
                 ? output
-                : CreateTempFolder($"{pipelineId}-obj2tiles-decimation", useSystem, output);
+                : TempFolder.CreateTempFolder($"{pipelineId}-obj2tiles-decimation", useSystem, output);
 
             logger.Info($"Decimation stage with {lod} LODs");
             sw.Start();
@@ -30,7 +64,7 @@ public class ObjProcess
             Console.WriteLine(" ?> Decimation stage done in {0}", sw.Elapsed);
 
             if (stopAt == Stage.Decimation)
-                return;
+                return output;
 
             #endregion
 
@@ -40,7 +74,7 @@ public class ObjProcess
 
             destFolderSplit = stopAt == Stage.Splitting
                 ? output
-                : CreateTempFolder($"{pipelineId}-obj2tiles-split", useSystem, output);
+                : TempFolder.CreateTempFolder($"{pipelineId}-obj2tiles-split", useSystem, output);
 
             var boundsMapper = await StagesFacade.Split(decimateRes.DestFiles, destFolderSplit, division,
                 splitZ, decimateRes.Bounds, keepIntermediate);
@@ -48,7 +82,7 @@ public class ObjProcess
             Console.WriteLine(" ?> Splitting stage done in {0}", sw.Elapsed);
 
             if (stopAt == Stage.Splitting)
-                return;
+                return output;
 
             var gpsCoords = latitude != null && longitude != null
                 ? new GpsCoords(latitude.Value, longitude.Value, altitude)
@@ -59,7 +93,7 @@ public class ObjProcess
 
             sw.Restart();
 
-            StagesFacade.Tile(destFolderSplit, output, lod, boundsMapper, gpsCoords);
+            StagesFacade.Tile(destFolderSplit, output, lod, boundsMapper, logger, gpsCoords);
 
             Console.WriteLine(" ?> Tiling stage done in {0}", sw.Elapsed);
         }
@@ -97,28 +131,7 @@ public class ObjProcess
                 Console.WriteLine(" ?> Cleaning up ok");
             }
         }
-    }
 
-    public static async Task ProcessObj(Options opts, string pipelineId, ILog logger, Stopwatch sw, Stopwatch swg)
-    {
-        await ProcessObj(opts.Output, opts.Input, opts.StopAt, pipelineId, opts.LoDs, opts.Divisions,
-            opts.KeepIntermediateFiles, opts.ZSplit, opts.Latitude, opts.Longitude, opts.Altitude,
-            opts.UseSystemTempFolder, sw, swg, logger);
-    }
-
-    private static string CreateTempFolder(string folderName, bool useSystem, string output)
-    {
-        if (useSystem)
-        {
-            return CreateTempFolder(folderName, Path.GetTempPath());
-        }
-        return CreateTempFolder(folderName, Path.Combine(output, ".temp"));
-    }
-
-    private static string CreateTempFolder(string folderName, string baseFolder)
-    {
-        string tempFolder = Path.Combine(baseFolder, folderName);
-        Directory.CreateDirectory(tempFolder);
-        return tempFolder;
+        return output;
     }
 }
