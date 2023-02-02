@@ -1,10 +1,10 @@
 ﻿using System.Diagnostics;
 using Obj2Tiles.Library.Geometry;
+using Obj2Tiles.Obj.Tiles;
 using Obj2Tiles.Stages.Model;
-using Obj2Tiles.Tiles;
 using SilentWave.Obj2Gltf;
 
-namespace Obj2Tiles;
+namespace Obj2Tiles.Obj;
 
 public static class Utils
 {
@@ -97,8 +97,6 @@ public static class Utils
             if (line.StartsWith("decal"))
             {
                 dependencies.Add(line[6..].Trim());
-
-                continue;
             }
         }
 
@@ -110,13 +108,17 @@ public static class Utils
     {
         return new BoundingVolume
         {
-            Box = new[] { box.Center.X, -box.Center.Z, box.Center.Y, box.Width / 2, 0, 0, 0, -box.Depth / 2, 0, 0, 0, box.Height / 2 }
+            Box = new[]
+            {
+                box.Center.X, -box.Center.Z, box.Center.Y, box.Width / 2, 0, 0, 0, -box.Depth / 2, 0, 0, 0,
+                box.Height / 2
+            }
         };
     }
-    
+
     public static void CopyObjDependencies(string input, string output)
     {
-        var dependencies = Utils.GetObjDependencies(input);
+        var dependencies = GetObjDependencies(input);
 
         foreach (var dependency in dependencies)
         {
@@ -131,17 +133,14 @@ public static class Utils
             var destFolder = Path.GetDirectoryName(dependencyDestPath);
             if (destFolder != null) Directory.CreateDirectory(destFolder);
 
-            if (File.Exists(dependencyDestPath))
-            {
-                continue;
-            }
+            if (File.Exists(dependencyDestPath)) continue;
 
             File.Copy(Path.Combine(Path.GetDirectoryName(input), dependency), dependencyDestPath, true);
 
             Console.WriteLine($" -> Copied {dependency}");
         }
     }
-    
+
     public static void ConvertB3dm(string objPath, string destPath)
     {
         var dir = Path.GetDirectoryName(objPath);

@@ -1,28 +1,26 @@
 ﻿using System.Collections.Concurrent;
 using System.Diagnostics;
-using System.Text.Json;
 using Obj2Tiles.Common;
 using Obj2Tiles.Library;
 using Obj2Tiles.Library.Geometry;
 
-namespace Obj2Tiles.Stages;
+namespace Obj2Tiles.Obj.Stages;
 
 public static partial class StagesFacade
 {
     public static async Task<Dictionary<string, Box3>[]> Split(string[] sourceFiles, string destFolder, int divisions,
         bool zsplit, Box3 bounds, bool keepOriginalTextures = false)
     {
-      
         var tasks = new List<Task<Dictionary<string, Box3>>>();
 
-        int total = sourceFiles.Length;
-        
+        var total = sourceFiles.Length;
+
         for (var index = 0; index < sourceFiles.Length; index++)
         {
             InformationOutput.percent(index, total, "Split File");
             var file = sourceFiles[index];
             var dest = Path.Combine(destFolder, "LOD-" + index);
-            
+
             // We compress textures except the first one (the original one)
             var textureStrategy = keepOriginalTextures ? TexturesStrategy.KeepOriginal :
                 index == 0 ? TexturesStrategy.Repack : TexturesStrategy.RepackCompressed;
@@ -50,7 +48,7 @@ public static partial class StagesFacade
         var tilesBounds = new Dictionary<string, Box3>();
 
         Directory.CreateDirectory(destPath);
-        
+
         Console.WriteLine($" -> Loading OBJ file \"{sourcePath}\"");
 
         sw.Start();
@@ -65,13 +63,12 @@ public static partial class StagesFacade
 
             if (mesh is MeshT t)
                 t.TexturesStrategy = TexturesStrategy.Compress;
-            
+
             mesh.WriteObj(Path.Combine(destPath, $"{mesh.Name}.obj"));
-            
+
             return new Dictionary<string, Box3> { { mesh.Name, mesh.Bounds } };
-            
         }
-                
+
         Console.WriteLine(
             $" -> Splitting with a depth of {divisions}{(zSplit ? " with z-split" : "")}");
 
@@ -112,13 +109,13 @@ public static partial class StagesFacade
 
         var ms = meshes.ToArray();
 
-        int total2 = ms.Length;
+        var total2 = ms.Length;
         for (var index = 0; index < ms.Length; index++)
         {
             InformationOutput.percent(index, total2, "Writing meshes");
             var m = ms[index];
 
-            
+
             //TODO: WHEN IS DECIDED IF SOMETHING IS MESH AND MESHT? WHY DIFFERENT WRITERS?
             if (m is MeshT t)
             {

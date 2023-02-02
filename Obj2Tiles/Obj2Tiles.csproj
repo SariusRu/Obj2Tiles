@@ -2,7 +2,7 @@
 
     <PropertyGroup>
         <OutputType>Exe</OutputType>
-        <TargetFramework>net6.0</TargetFramework>
+        <TargetFramework>net7.0</TargetFramework>
         <ImplicitUsings>enable</ImplicitUsings>
         <Nullable>enable</Nullable>
         <IsPackable>false</IsPackable>
@@ -12,21 +12,24 @@
     </PropertyGroup>
 
     <ItemGroup>
-      <ProjectReference Include="..\MeshDecimatorCore\MeshDecimatorCore.csproj" />
-      <ProjectReference Include="..\Obj2Gltf\Obj2Gltf.csproj" />
-      <ProjectReference Include="..\Obj2Tiles.Common\Obj2Tiles.Common.csproj" />
-      <ProjectReference Include="..\Obj2Tiles.Library\Obj2Tiles.Library.csproj" />
+        <ProjectReference Include="..\MeshDecimatorCore\MeshDecimatorCore.csproj" />
+        <ProjectReference Include="..\Obj2Gltf\Obj2Gltf.csproj" />
+        <ProjectReference Include="..\Obj2Tiles.Common\Obj2Tiles.Common.csproj" />
+        <ProjectReference Include="..\Obj2Tiles.Csv\Obj2Tiles.Csv.csproj" />
+        <ProjectReference Include="..\Obj2Tiles.Library\Obj2Tiles.Library.csproj" />
+        <ProjectReference Include="..\Obj2Tiles.Obj\Obj2Tiles.Obj.csproj" />
+        <ProjectReference Include="..\Onbj2Tiles.Obj\Onbj2Tiles.Obj.csproj" />
     </ItemGroup>
 
     <ItemGroup>
-      <PackageReference Include="CommandLineParser" Version="2.9.1" />
-      <PackageReference Include="log4net" Version="2.0.15" />
+        <PackageReference Include="CommandLineParser" Version="2.9.1" />
+        <PackageReference Include="log4net" Version="2.0.15" />
     </ItemGroup>
 
     <ItemGroup>
-      <None Update="log4net.config">
-        <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-      </None>
+        <None Update="log4net.config">
+            <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+        </None>
     </ItemGroup>
 
 </Project>

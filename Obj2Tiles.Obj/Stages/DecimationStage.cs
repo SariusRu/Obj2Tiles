@@ -1,14 +1,13 @@
 ﻿using System.Diagnostics;
-using log4net;
 using System.Reflection;
+using log4net;
 using MeshDecimatorCore;
 using MeshDecimatorCore.Algorithms;
 using MeshDecimatorCore.Math;
+using Microsoft.VisualBasic.CompilerServices;
 using Obj2Tiles.Stages.Model;
-using Mesh = MeshDecimatorCore.Mesh;
-using log4net.Repository.Hierarchy;
 
-namespace Obj2Tiles.Stages;
+namespace Obj2Tiles.Obj.Stages;
 
 public static partial class StagesFacade
 {
@@ -17,7 +16,7 @@ public static partial class StagesFacade
         var _logger = LogManager.GetLogger(MethodBase.GetCurrentMethod()?.DeclaringType);
 
         _logger.Info("Calculating Quality");
-        var qualities = Enumerable.Range(0, lods - 1).Select(i => 1.0f - ((i + 1) / (float)lods)).ToArray();
+        var qualities = Enumerable.Range(0, lods - 1).Select(i => 1.0f - (i + 1) / (float)lods).ToArray();
 
         _logger.Info("Calculating Quality completed");
 
@@ -37,7 +36,7 @@ public static partial class StagesFacade
 
         //Serialized for now
         //TODO: Option
-        bool serialized = true;
+        var serialized = true;
         _logger.Info("Running in serialized Mode");
 
         for (var index = 0; index < qualities.Length; index++)
@@ -50,13 +49,10 @@ public static partial class StagesFacade
 
             _logger.Info(string.Format("Decimating mesh {0} with quality {1}", fileName, quality));
 
-           
-
-            
 
             if (serialized)
             {
-                Task decimation = Task.Run(() => InternalDecimate(sourceObjMesh, destFile, quality, _logger));
+                var decimation = Task.Run(() => InternalDecimate(sourceObjMesh, destFile, quality, _logger));
                 decimation.Wait();
                 _logger.Info("Completed Decimation for Quqality " + quality);
             }
@@ -64,6 +60,7 @@ public static partial class StagesFacade
             {
                 tasks.Add(Task.Run(() => InternalDecimate(sourceObjMesh, destFile, quality, _logger)));
             }
+
             destFiles.Add(destFile);
         }
 
@@ -75,7 +72,6 @@ public static partial class StagesFacade
         _logger.Info("Dependencies copied");
 
         return new DecimateResult { DestFiles = destFiles.ToArray(), Bounds = bounds };
-
     }
 
 
@@ -98,20 +94,13 @@ public static partial class StagesFacade
         _logger.Info(quality + ": Setting UVs");
 
         if (sourceTexCoords2D != null)
-        {
             sourceMesh.SetUVs(0, sourceTexCoords2D);
-        }
-        else if (sourceTexCoords3D != null)
-        {
-            sourceMesh.SetUVs(0, sourceTexCoords3D);
-        }
+        else if (sourceTexCoords3D != null) sourceMesh.SetUVs(0, sourceTexCoords3D);
 
 
         var currentTriangleCount = 0;
         for (var i = 0; i < sourceSubMeshIndices.Length; i++)
-        {
             currentTriangleCount += sourceSubMeshIndices[i].Length / 3;
-        }
 
         var targetTriangleCount = (int)Math.Ceiling(currentTriangleCount * quality);
         _logger.Info(string.Format(quality + ": Input: {0} vertices, {1} triangles (target {2})",
@@ -166,15 +155,11 @@ public static partial class StagesFacade
         destObjMesh.WriteFile(destPath);
 
         var outputTriangleCount = 0;
-        for (var i = 0; i < destIndices.Length; i++)
-        {
-            outputTriangleCount += (destIndices[i].Length / 3);
-        }
+        for (var i = 0; i < destIndices.Length; i++) outputTriangleCount += destIndices[i].Length / 3;
 
         var reduction = (float)outputTriangleCount / currentTriangleCount;
         var timeTaken = (float)stopwatch.Elapsed.TotalSeconds;
         _logger.Info(string.Format(quality + ": Output: {0} vertices, {1} triangles ({2} reduction; {3:0.0000} sec)",
             destVertices.Length, outputTriangleCount, reduction, timeTaken));
     }
-
 }

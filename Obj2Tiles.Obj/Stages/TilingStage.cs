@@ -1,22 +1,24 @@
-﻿using System.Diagnostics;
-using System.Text;
-using Newtonsoft.Json;
+﻿using Newtonsoft.Json;
 using Obj2Tiles.Library.Geometry;
 using Obj2Tiles.Stages.Model;
-using Obj2Tiles.Tiles;
-using SilentWave;
-using SilentWave.Obj2Gltf;
 
-namespace Obj2Tiles.Stages;
+namespace Obj2Tiles.Obj.Stages;
 
 public static partial class StagesFacade
 {
+    // Where is it?
+    private static readonly GpsCoords DefaultGpsCoords = new()
+    {
+        Altitude = 0,
+        Latitude = 45.46424200394995,
+        Longitude = 9.190277486808588
+    };
+
     public static void Tile(string sourcePath, string destPath, int lods, Dictionary<string, Box3>[] boundsMapper,
         GpsCoords? coords = null)
     {
-
         Console.WriteLine(" ?> Working on objs conversion");
-        
+
         ConvertAllB3dm(sourcePath, destPath, lods);
 
         Console.WriteLine(" -> Generating tileset.json");
@@ -26,7 +28,7 @@ public static partial class StagesFacade
             Console.WriteLine(" ?> Using default coordinates");
             coords = DefaultGpsCoords;
         }
-       
+
         // Don't ask me why 100, I have no idea but it works
         // https://github.com/CesiumGS/3d-tiles/issues/162
         const int baseError = 100;
@@ -54,11 +56,11 @@ public static partial class StagesFacade
         var minZ = double.MaxValue;
 
         var masterDescriptors = boundsMapper[0].Keys;
-        
+
         foreach (var descriptor in masterDescriptors)
         {
             var currentTileElement = tileset.Root;
-            
+
             var refBox = boundsMapper[0][descriptor];
 
             for (var lod = lods - 1; lod >= 0; lod--)
@@ -111,13 +113,11 @@ public static partial class StagesFacade
     // Calculate mesh geometric error
     private static double CalculateGeometricError(Box3 refBox, Box3 box, int lod)
     {
-
         var dW = Math.Abs(refBox.Width - box.Width) / box.Width + 1;
         var dH = Math.Abs(refBox.Height - box.Height) / box.Height + 1;
         var dD = Math.Abs(refBox.Depth - box.Depth) / box.Depth + 1;
-       
-        return Math.Pow(dW + dH + dD, lod);
 
+        return Math.Pow(dW + dH + dD, lod);
     }
 
     private static void ConvertAllB3dm(string sourcePath, string destPath, int lods)
@@ -138,19 +138,10 @@ public static partial class StagesFacade
             }
         }
 
-        Parallel.ForEach(filesToConvert, (file) =>
+        Parallel.ForEach(filesToConvert, file =>
         {
             Console.WriteLine($" -> Converting to b3dm '{file.Item1}'");
             Utils.ConvertB3dm(file.Item1, file.Item2);
         });
     }
-
-    // Where is it?
-    private static readonly GpsCoords DefaultGpsCoords = new()
-    {
-        Altitude = 0,
-        Latitude = 45.46424200394995,
-        Longitude = 9.190277486808588
-    };
-
 }

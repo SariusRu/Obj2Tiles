@@ -52,4 +52,3 @@ public class TileElement
     [JsonProperty("children")]
     public List<TileElement>? Children { get; set; }
 }
-

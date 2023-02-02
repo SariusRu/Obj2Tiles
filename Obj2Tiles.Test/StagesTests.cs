@@ -1,15 +1,12 @@
 using System;
-using System.Collections.Generic;
-using System.Diagnostics;
 using System.IO;
 using System.Linq;
-using System.Threading.Tasks;
 using Newtonsoft.Json;
 using NUnit.Framework;
-using Obj2Tiles.Common;
 using Obj2Tiles.Library.Geometry;
-using Obj2Tiles.Stages;
+using Obj2Tiles.Obj.Stages;
 using Obj2Tiles.Stages.Model;
+using Obj2Tiles.Obj;
 
 namespace Obj2Tiles.Test;
 
@@ -46,9 +43,8 @@ public class StagesTests
                     new Vertex3(bounds.Max.X, bounds.Max.Y, bounds.Max.Z)),
                 Name = Path.GetFileNameWithoutExtension(file)
             }).ToDictionary(item => item.Name, item => item.Bounds);
-    
+
         StagesFacade.Tile("TestData/Tile1", testPath, 1, new[] { boundsMapper });
-        
     }
 
     [Test]
@@ -62,11 +58,10 @@ public class StagesTests
         };
 
         var transform = gpsCoords.ToEcefTransform();
-        
-        Console.WriteLine(JsonConvert.SerializeObject(transform, Formatting.Indented));
 
+        Console.WriteLine(JsonConvert.SerializeObject(transform, Formatting.Indented));
     }
-    
+
     [Test]
     public void TilingStage_TileCoords2()
     {
@@ -78,17 +73,15 @@ public class StagesTests
         };
 
         var transform = gpsCoords.ToEcefTransform();
-        
-        Console.WriteLine(JsonConvert.SerializeObject(transform, Formatting.Indented));
 
+        Console.WriteLine(JsonConvert.SerializeObject(transform, Formatting.Indented));
     }
 
     [Test]
     public void TilingStage_ConvertTest()
     {
         var testPath = GetTestOutputPath(nameof(TilingStage_ConvertTest));
-        
-        Utils.ConvertB3dm("TestData/Tile2/Mesh-XL-YR-XR-YL.obj", Path.Combine(testPath, "out.b3dm"));
 
+        Utils.ConvertB3dm("TestData/Tile2/Mesh-XL-YR-XR-YL.obj", Path.Combine(testPath, "out.b3dm"));
     }
 }

@@ -19,6 +19,10 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "External", "External", "{B3
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Obj2Tiles.Common", "Obj2Tiles.Common\Obj2Tiles.Common.csproj", "{6AFF35B1-E6BB-4EAB-8AB8-6096E09EBC2B}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Obj2Tiles.Csv", "Obj2Tiles.Csv\Obj2Tiles.Csv.csproj", "{B794DCC1-7B61-412C-82BE-231E8CF395C2}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Obj2Tiles.Obj", "Obj2Tiles.Obj\Obj2Tiles.Obj.csproj", "{9F650BA2-79E1-4F4F-BB55-FF18B0164AB7}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -53,6 +57,14 @@ Global
 		{6AFF35B1-E6BB-4EAB-8AB8-6096E09EBC2B}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{6AFF35B1-E6BB-4EAB-8AB8-6096E09EBC2B}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{6AFF35B1-E6BB-4EAB-8AB8-6096E09EBC2B}.Release|Any CPU.Build.0 = Release|Any CPU
+		{B794DCC1-7B61-412C-82BE-231E8CF395C2}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{B794DCC1-7B61-412C-82BE-231E8CF395C2}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{B794DCC1-7B61-412C-82BE-231E8CF395C2}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{B794DCC1-7B61-412C-82BE-231E8CF395C2}.Release|Any CPU.Build.0 = Release|Any CPU
+		{9F650BA2-79E1-4F4F-BB55-FF18B0164AB7}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{9F650BA2-79E1-4F4F-BB55-FF18B0164AB7}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{9F650BA2-79E1-4F4F-BB55-FF18B0164AB7}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{9F650BA2-79E1-4F4F-BB55-FF18B0164AB7}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
