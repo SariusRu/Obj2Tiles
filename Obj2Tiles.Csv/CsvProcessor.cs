@@ -3,6 +3,7 @@ using System.Reflection;
 using log4net;
 using log4net.Config;
 using Microsoft.VisualBasic.FileIO;
+using Newtonsoft.Json;
 using Obj2Tiles.Common;
 using Obj2Tiles.Library;
 using Obj2Tiles.Library.Geometry;
@@ -19,6 +20,7 @@ public class CsvProcessor : IProcessor
     private Dictionary<string, string> Objects3D { get; }
     private Dictionary<string, TileObjectStorage> Tiles { get; }
     private string InputCsvFile { get; }
+    private string[] InputModels { get; }
     private CsvInformationHolder fileInfo { get; set; }
 
     public CsvProcessor(Options opt, string pipelineId)
@@ -32,6 +34,7 @@ public class CsvProcessor : IProcessor
         var logRepository = LogManager.GetRepository(Assembly.GetEntryAssembly());
         XmlConfigurator.Configure(logRepository, new FileInfo("log4net.config"));
         _logger = LogManager.GetLogger(MethodBase.GetCurrentMethod()?.DeclaringType);
+        InputModels = _options.InputModels.Split("'");
     }
 
     public async Task Init()
@@ -40,12 +43,24 @@ public class CsvProcessor : IProcessor
         {
             AnalyzeFile();
 
-            foreach (KeyValuePair<string, string> objectType in Objects3D)
+            if (InputModels.Length < Objects3D.Count || InputModels.Length > Objects3D.Count)
             {
-                var file = AskUserInput("File for " + objectType.Key);
-                Update3DModel(objectType.Key, file);
+                _logger.Warn("Options could not be read correctly. Asking for user Input");
+                foreach (KeyValuePair<string, string> objectType in Objects3D)
+                {
+                    var file = AskUserInput("File for " + objectType.Key);
+                    Update3DModel(objectType.Key, file);
+                }
             }
-
+            else
+            {
+                int i = 0;
+                foreach (var element in Objects3D)
+                {
+                    Update3DModel(element.Key, InputModels[i]);
+                    i++;
+                }
+            }
             await TileObjects();
         }
         catch (Exception ex)
@@ -173,16 +188,73 @@ public class CsvProcessor : IProcessor
 
         foreach (var file in Objects3D)
         {
-            string pipelineId = file.Key;
-            string input = file.Value;
-            string output = TempFolder.GetTempFolder(_options.UseSystemTempFolder, _options.Output) + "/tiles/" + file.Key;
-            ObjProcessor process = new ObjProcessor(pipelineId);
-            TileObjectStorage result = await process.ProcessObj(output, input, Stage.Tiling, pipelineId, lod, divisions, keepIntermediate,
-                splitZ, latitude, longitude, altitude, useSystem, sw, swg, _logger);
-            Tiles.Add(file.Key, result);
+            if (file.Value.EndsWith("obj"))
+            {
+                string pipelineId = file.Key;
+                string input = file.Value;
+                string output = TempFolder.GetTempFolder(_options.UseSystemTempFolder, _options.Output) + "\\tiles\\" + file.Key;
+                ObjProcessor process = new ObjProcessor(pipelineId);
+                TileObjectStorage result = await process.ProcessObj(output, input, Stage.Tiling, pipelineId, lod, divisions, keepIntermediate,
+                    splitZ, latitude, longitude, altitude, useSystem, sw, swg, _logger);
+                Tiles.Add(file.Key, result);
+            }
+            else if(file.Value.EndsWith("json"))
+            {
+                //Copy file to Output Folder
+                string output = TempFolder.GetTempFolder(_options.UseSystemTempFolder, _options.Output) + "\\tiles\\" + file.Key;
+                string outputFileName = output + "\\tileset.json";
+                File.Copy(file.Value, outputFileName, true);
+
+                //Check for any dependencies
+                List<string> associatedFiles = new List<string>();
+                if (System.IO.File.Exists(outputFileName))
+                {
+                    Tileset tileset = JsonConvert.DeserializeObject<Tileset>(File.ReadAllText(outputFileName));
+                    associatedFiles = AnalyzeTileset(tileset.Root.Children);
+                    string baseFileFolder = new FileInfo(file.Value).Directory.FullName;
+                    foreach (string content in associatedFiles)
+                    {
+                        //Get Input minus filename
+                        File.Copy(baseFileFolder + "\\" + content, output + "\\" + content, true);
+                    }
+                    _logger.Info($"Version: {tileset.Asset.Version}");
+
+                    TileObjectStorage result = new TileObjectStorage();
+                    result.filePath = outputFileName;
+                    result.BoudingBox = tileset.Root.BoundingVolume;
+                    Tiles.Add(file.Key, result);
+                }
+                else
+                {
+                    _logger.Error("Failed to read file");
+                }
+            }
+            else
+            {
+                Exception ex = new ArgumentException($"Could not parse file : {file.Value}");
+                _logger.Error("File-Parsing Error", ex);
+            }
+            
         }
     }
-    
+
+    private List<string> AnalyzeTileset(List<TileElement> rootChildren)
+    {
+        List<string> files = new List<string>();
+        foreach (TileElement child in rootChildren)
+        {
+            if (child.Children != null && child.Children.Count > 0)
+            {
+                files.AddRange(AnalyzeTileset(child.Children));
+            }
+            else
+            {
+                files.Add(child.Content.Uri);
+            }
+        }
+        return files;
+    }
+
     private string AskUserInput(string message)
     {
         // Type your username and press enter

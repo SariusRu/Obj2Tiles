@@ -9,6 +9,9 @@ public class Options
 
     [Value(1, MetaName = "Output", Required = true, HelpText = "Output folder.")]
     public string Output { get; set; } = "";
+    
+    [Value(3, MetaName = "InputModels", Required = false, HelpText = "Input-Files for CSV-Options")]
+    public string InputModels { get; set; } = "";
 
     [Option('s', "stage", Required = false, HelpText = "Stage to stop at (Decimation, Splitting, Tiling)",
         Default = Stage.Tiling)]
