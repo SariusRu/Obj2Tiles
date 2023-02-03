@@ -1,62 +1,36 @@
-﻿using Obj2Tiles.Stages.Model;
-
-namespace Obj2Tiles.Csv;
+﻿namespace Obj2Tiles.Csv;
 
 public class CsvInformationHolder
 {
-    private List<InformationSnippet> list;
+    public List<InformationSnippet> List { get; }
 
     public CsvInformationHolder()
     {
-        list = new List<InformationSnippet>();
+        List = new List<InformationSnippet>();
     }
 
     public void Add(InformationSnippet info)
     {
-        list.Add(info);
+        List.Add(info);
     }
-    
-    /// <summary>
-    /// Sorts the list by Longitude, retrieves the largest and smallest between them, and returns the difference between them.
-    /// </summary>
-    /// <returns></returns>
-    public GpsCoords getWidthDegree()
+
+    public double GetWidth()
     {
-        //Sort the list by Longitude
-        list.Sort((x, y) => x.Longitude.CompareTo(y.Longitude));
-        double smallest = list.Select(e => e.Longitude).Min();
-        double largest = list.Select(e => e.Latitude).Max();
+        double smallest = List.Select(e => e.X).Min();
+        double largest = List.Select(e => e.X).Max();
 
         double difference = largest - smallest;
         if (difference < 0)
         {
             difference *= -1;
         }
-        
-        double latitude = list.Select(e => e.Latitude).Average();
-
-        return new GpsCoords()
-        {
-            Longitude = difference,
-            Latitude = latitude,
-            Altitude = 0
-        };
+        return difference;
     }
 
-    public double getWidthMeter()
+    public double GetHeight()
     {
-        GpsCoords degree = getWidthDegree();
-        
-        //TODO: More exact Formula
-
-
-        return 40075 * Math.Cos(degree.Latitude) / 360 * degree.Longitude;
-    }
-
-    public double GetHeightDegree()
-    {
-        double smallest = list.Select(e => e.Latitude).Min();
-        double largest = list.Select(e => e.Latitude).Max();
+        double smallest = List.Select(e => e.Y).Min();
+        double largest = List.Select(e => e.Y).Max();
         
         double difference = largest - smallest;
         if (difference < 0)
@@ -67,21 +41,64 @@ public class CsvInformationHolder
         return difference;
     }
 
-    public double getHeightMeters()
+    public void Scale()
     {
-        return 111.32 * GetHeightDegree();
+        double minX = GetMinX();
+        double minY = GetMinY();
+        double minZ = GetMinZ();
+
+        foreach (InformationSnippet entity in List)
+        {
+            entity.X -= minX;
+            entity.Y -= minY;
+            entity.Z -= minZ;
+        }
+    }
+
+    public double GetMinX()
+    {
+        return List.Select(e => e.X).Min();
+    }
+
+    public double GetMinY()
+    {
+        return List.Select(e => e.Y).Min();
+    }
+
+    public double GetMinZ()
+    {
+        return List.Select(e => e.Z).Min();
+    }
+
+    public double GetMaxX()
+    {
+        return List.Select(e => e.X).Max();
+    }
+
+    public double GetMaxY()
+    {
+        return List.Select(e => e.Y).Max();
+    }
+    
+    public double GetMaxZ()
+    {
+        return List.Select(e => e.Z).Max();
     }
 }
 
 public class InformationSnippet
 {
-    public double Longitude { get; set; }
-    public double Latitude { get; set; }
-    public double Altitude { get; set; }
-    public string Type { get; set; } = "";
-
-    public string ToString()
+    public double X { get; set; }
+    public double Y { get; set; }
+    public double Z { get; set; }
+    public string Type { get; init; } = "";
+    public override string ToString()
     {
-        return $"{Longitude} - {Latitude} - {Altitude}: Type {Type}";
+        return $"{X} - {Y} - {Z}: Type {Type}";
+    }
+
+    public double[] ConvertToECEF()
+    {
+        return new[] { 1.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, X, Z, Y, 1 };
     }
 }

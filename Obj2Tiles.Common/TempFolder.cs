@@ -2,7 +2,7 @@
 
 public class TempFolder
 {
-    private const string TempFolderName = ".temp";
+    private const string TempFolderName = "temp";
 
     public static string CreateTempFolder(bool useSystem, string output)
     {
@@ -28,5 +28,15 @@ public class TempFolder
         string tempFolder = Path.Combine(baseFolder, folderName);
         Directory.CreateDirectory(tempFolder);
         return tempFolder;
+    }
+
+    public static string GetTempFolder(bool useSystem, string output)
+    {
+        if (useSystem)
+        {
+            return Path.GetTempPath();
+        }
+
+        return Path.Combine(output, TempFolderName);
     }
 }

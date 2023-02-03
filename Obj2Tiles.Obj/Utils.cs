@@ -1,4 +1,5 @@
 ﻿using System.Diagnostics;
+using Obj2Tiles.Common;
 using Obj2Tiles.Library.Geometry;
 using Obj2Tiles.Obj.Tiles;
 using Obj2Tiles.Stages.Model;
@@ -103,6 +104,35 @@ public static class Utils
         return dependencies;
     }
 
+    
+    
+    //TODO: Retrieve bounding box from first element
+    public static BoundingVolume ToBoundingVolumeCsv(this Box3 box)
+    {
+        return new BoundingVolume
+        {
+            Box = new[]
+            {
+                //Center
+                box.Center.X,
+                box.Center.Y,
+                box.Center.Z,
+                //X-Axis
+                box.Width / 2,
+                0,
+                0,
+                //Y-Axes
+                0,
+                box.Depth / 2,
+                0,
+                //Z-Axis
+                0,
+                0,
+                box.Height / 2
+            }
+        };
+    }
+    
 
     public static BoundingVolume ToBoundingVolume(this Box3 box)
     {
@@ -110,7 +140,21 @@ public static class Utils
         {
             Box = new[]
             {
-                box.Center.X, -box.Center.Z, box.Center.Y, box.Width / 2, 0, 0, 0, -box.Depth / 2, 0, 0, 0,
+                //Center
+                box.Center.X,
+                -box.Center.Z,
+                box.Center.Y,
+                //X-Axis
+                box.Width / 2,
+                0,
+                0,
+                //Y-Axes
+                0,
+                -box.Depth / 2,
+                0,
+                //Z-Axis
+                0,
+                0,
                 box.Height / 2
             }
         };
@@ -137,17 +181,17 @@ public static class Utils
 
             File.Copy(Path.Combine(Path.GetDirectoryName(input), dependency), dependencyDestPath, true);
 
-            Console.WriteLine($" -> Copied {dependency}");
+            Logging.Info($"Copied {dependency}");
         }
     }
 
     public static void ConvertB3dm(string objPath, string destPath)
     {
-        var dir = Path.GetDirectoryName(objPath);
-        var name = Path.GetFileNameWithoutExtension(objPath);
+        string? dir = Path.GetDirectoryName(objPath);
+        string name = Path.GetFileNameWithoutExtension(objPath);
 
-        var converter = Converter.MakeDefault();
-        var outputFile = dir != null ? Path.Combine(dir, $"{name}.gltf") : $"{name}.gltf";
+        Converter converter = Converter.MakeDefault();
+        string outputFile = dir != null ? Path.Combine(dir, $"{name}.gltf") : $"{name}.gltf";
 
         converter.Convert(objPath, outputFile);
 

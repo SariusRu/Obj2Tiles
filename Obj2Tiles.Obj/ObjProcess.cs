@@ -41,13 +41,14 @@ public class ObjProcessor : IProcessor
             _options.UseSystemTempFolder, sw, swg, _logger);
     }
 
-    public async Task<string> ProcessObj(string output, string input, Stage stopAt, string pipelineId,
+    public async Task<TileObjectStorage> ProcessObj(string output, string input, Stage stopAt, string pipelineId,
         int lod, int division, bool keepIntermediate, bool splitZ, double? latitude, double? longitude, double altitude,
         bool useSystem, Stopwatch sw,
         Stopwatch swg, ILog logger)
     {
         string? destFolderDecimation = null;
         string? destFolderSplit = null;
+        TileObjectStorage objStorage = new TileObjectStorage();
         try
         {
             #region Decimation
@@ -61,15 +62,14 @@ public class ObjProcessor : IProcessor
 
             var decimateRes = await StagesFacade.Decimate(input, destFolderDecimation, lod);
 
-            Console.WriteLine(" ?> Decimation stage done in {0}", sw.Elapsed);
+            logger.Info($"Decimation stage done in {sw.Elapsed}");
 
             if (stopAt == Stage.Decimation)
-                return output;
+                return objStorage;
 
             #endregion
-
-            Console.WriteLine();
-            Console.WriteLine(
+            
+            logger.Info(
                 $" => Splitting stage with {division} divisions {(splitZ ? "and Z-split" : "")}");
 
             destFolderSplit = stopAt == Stage.Splitting
@@ -79,45 +79,43 @@ public class ObjProcessor : IProcessor
             var boundsMapper = await StagesFacade.Split(decimateRes.DestFiles, destFolderSplit, division,
                 splitZ, decimateRes.Bounds, keepIntermediate);
 
-            Console.WriteLine(" ?> Splitting stage done in {0}", sw.Elapsed);
+            logger.Info($"Splitting stage done in {sw.Elapsed}");
 
             if (stopAt == Stage.Splitting)
-                return output;
+                return objStorage;
 
             var gpsCoords = latitude != null && longitude != null
                 ? new GpsCoords(latitude.Value, longitude.Value, altitude)
                 : null;
-
-            Console.WriteLine();
-            Console.WriteLine($" => Tiling stage {(gpsCoords != null ? $"with GPS coords {gpsCoords}" : "")}");
+            
+            logger.Info($" => Tiling stage {(gpsCoords != null ? $"with GPS coords {gpsCoords}" : "")}");
 
             sw.Restart();
 
-            StagesFacade.Tile(destFolderSplit, output, lod, boundsMapper, logger, gpsCoords);
+            StagesFacade.Tile(destFolderSplit, output, lod, boundsMapper, gpsCoords);
 
-            Console.WriteLine(" ?> Tiling stage done in {0}", sw.Elapsed);
+            logger.Info($"Tiling stage done in {sw.Elapsed}");
         }
         catch (Exception ex)
         {
-            Console.WriteLine(" !> Exception: {0}", ex.Message);
+            logger.Error("Exception: ", ex);
         }
         finally
         {
-            Console.WriteLine();
-            Console.WriteLine(" => Pipeline completed in {0}", swg.Elapsed);
+            logger.Info($"Pipeline completed in {swg.Elapsed}");
 
-            var tmpFolder = Path.Combine(output, ".temp");
+            var tmpFolder = Path.Combine(output, "temp");
 
             if (keepIntermediate)
             {
-                Console.WriteLine(
-                    $" ?> Skipping cleanup, intermediate files are in '{tmpFolder}' with pipeline id '{pipelineId}'");
+                logger.Info(
+                    $"Skipping cleanup, intermediate files are in '{tmpFolder}' with pipeline id '{pipelineId}'");
 
-                Console.WriteLine(" ?> You should delete this folder manually, it is only for debugging purposes");
+                logger.Warn("You should delete this folder manually, it is only for debugging purposes");
             }
             else
             {
-                Console.WriteLine(" => Cleaning up");
+                logger.Info("Cleaning up");
 
                 if (destFolderDecimation != null && destFolderDecimation != output)
                     Directory.Delete(destFolderDecimation, true);
@@ -128,10 +126,10 @@ public class ObjProcessor : IProcessor
                 if (Directory.Exists(tmpFolder))
                     Directory.Delete(tmpFolder, true);
 
-                Console.WriteLine(" ?> Cleaning up ok");
+                logger.Info("Cleaning up ok");
             }
         }
 
-        return output;
+        return objStorage;
     }
 }

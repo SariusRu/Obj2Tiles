@@ -49,17 +49,16 @@ public static partial class StagesFacade
 
         Directory.CreateDirectory(destPath);
 
-        Console.WriteLine($" -> Loading OBJ file \"{sourcePath}\"");
+        Logging.Info($"Loading OBJ file \"{sourcePath}\"");
 
         sw.Start();
         var mesh = MeshUtils.LoadMesh(sourcePath, out var deps);
 
-        Console.WriteLine(
-            $" ?> Loaded {mesh.VertexCount} vertices, {mesh.FacesCount} faces in {sw.ElapsedMilliseconds}ms");
+        Logging.Info($"Loaded {mesh.VertexCount} vertices, {mesh.FacesCount} faces in {sw.ElapsedMilliseconds}ms");
 
         if (divisions == 0)
         {
-            Console.WriteLine(" -> Skipping split stage, just compressing textures and cleaning up the mesh");
+            Logging.Info("Skipping split stage, just compressing textures and cleaning up the mesh");
 
             if (mesh is MeshT t)
                 t.TexturesStrategy = TexturesStrategy.Compress;
@@ -69,8 +68,7 @@ public static partial class StagesFacade
             return new Dictionary<string, Box3> { { mesh.Name, mesh.Bounds } };
         }
 
-        Console.WriteLine(
-            $" -> Splitting with a depth of {divisions}{(zSplit ? " with z-split" : "")}");
+        Logging.Info($"Splitting with a depth of {divisions}{(zSplit ? " with z-split" : "")}");
 
         var meshes = new ConcurrentBag<IMesh>();
 
@@ -100,10 +98,9 @@ public static partial class StagesFacade
 
         sw.Stop();
 
-        Console.WriteLine(
-            $" ?> Done {count} edge splits in {sw.ElapsedMilliseconds}ms ({(double)count / sw.ElapsedMilliseconds:F2} split/ms)");
+        Logging.Info($"Done {count} edge splits in {sw.ElapsedMilliseconds}ms ({(double)count / sw.ElapsedMilliseconds:F2} split/ms)");
 
-        Console.WriteLine(" -> Writing tiles");
+        Logging.Info("Writing tiles");
 
         sw.Restart();
 
@@ -119,7 +116,7 @@ public static partial class StagesFacade
             //TODO: WHEN IS DECIDED IF SOMETHING IS MESH AND MESHT? WHY DIFFERENT WRITERS?
             if (m is MeshT t)
             {
-                Console.WriteLine("Mesh is of Type MeshT");
+                Logging.Info("Mesh is of Type MeshT");
                 t.TexturesStrategy = textureStrategy;
             }
 
@@ -128,7 +125,7 @@ public static partial class StagesFacade
             tilesBounds.Add(m.Name, m.Bounds);
         }
 
-        Console.WriteLine($" ?> {meshes.Count} tiles written in {sw.ElapsedMilliseconds}ms");
+        Logging.Info($"{meshes.Count} tiles written in {sw.ElapsedMilliseconds}ms");
 
         return tilesBounds;
     }

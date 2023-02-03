@@ -1,6 +1,9 @@
 ﻿using Newtonsoft.Json;
+using Obj2Tiles.Common;
 using Obj2Tiles.Library.Geometry;
 using Obj2Tiles.Stages.Model;
+using log4net;
+using Obj2Tiles.Library;
 
 namespace Obj2Tiles.Obj.Stages;
 
@@ -14,18 +17,20 @@ public static partial class StagesFacade
         Longitude = 9.190277486808588
     };
 
-    public static void Tile(string sourcePath, string destPath, int lods, Dictionary<string, Box3>[] boundsMapper,
+    public static TileObjectStorage Tile(string sourcePath, string destPath, int lods, Dictionary<string, Box3>[] boundsMapper, 
         GpsCoords? coords = null)
     {
-        Console.WriteLine(" ?> Working on objs conversion");
+        TileObjectStorage storage = new TileObjectStorage();
+        
+        Logging.Info("Working on objs conversion");
 
         ConvertAllB3dm(sourcePath, destPath, lods);
 
-        Console.WriteLine(" -> Generating tileset.json");
+        Logging.Info("Generating tileset.json");
 
         if (coords == null)
         {
-            Console.WriteLine(" ?> Using default coordinates");
+            Logging.Info("Using default coordinates");
             coords = DefaultGpsCoords;
         }
 
@@ -105,6 +110,8 @@ public static partial class StagesFacade
         var globalBox = new Box3(minX, minY, minZ, maxX, maxY, maxZ);
 
         tileset.Root.BoundingVolume = globalBox.ToBoundingVolume();
+        
+        string path = 
 
         File.WriteAllText(Path.Combine(destPath, "tileset.json"),
             JsonConvert.SerializeObject(tileset, Formatting.Indented));
@@ -140,7 +147,7 @@ public static partial class StagesFacade
 
         Parallel.ForEach(filesToConvert, file =>
         {
-            Console.WriteLine($" -> Converting to b3dm '{file.Item1}'");
+            Logging.Info($" -> Converting to b3dm '{file.Item1}'");
             Utils.ConvertB3dm(file.Item1, file.Item2);
         });
     }

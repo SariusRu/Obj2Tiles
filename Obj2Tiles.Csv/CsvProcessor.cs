@@ -5,6 +5,7 @@ using log4net.Config;
 using Microsoft.VisualBasic.FileIO;
 using Obj2Tiles.Common;
 using Obj2Tiles.Library;
+using Obj2Tiles.Library.Geometry;
 using Obj2Tiles.Obj;
 using Obj2Tiles.Stages.Model;
 
@@ -16,9 +17,8 @@ public class CsvProcessor : IProcessor
     private readonly Options _options;
     private readonly string _id;
     private Dictionary<string, string> Objects3D { get; }
-    private Dictionary<string, string> Tiles { get; }
+    private Dictionary<string, TileObjectStorage> Tiles { get; }
     private string InputCsvFile { get; }
-
     private CsvInformationHolder fileInfo { get; set; }
 
     public CsvProcessor(Options opt, string pipelineId)
@@ -28,7 +28,7 @@ public class CsvProcessor : IProcessor
         InputCsvFile = _options.Input;
         fileInfo = new CsvInformationHolder();
         Objects3D = new Dictionary<string, string>();
-        Tiles = new Dictionary<string, string>();
+        Tiles = new Dictionary<string, TileObjectStorage>();
         var logRepository = LogManager.GetRepository(Assembly.GetEntryAssembly());
         XmlConfigurator.Configure(logRepository, new FileInfo("log4net.config"));
         _logger = LogManager.GetLogger(MethodBase.GetCurrentMethod()?.DeclaringType);
@@ -68,7 +68,9 @@ public class CsvProcessor : IProcessor
             };
         }
         
-        Tiling.Tile(tempFolder, _options.Output, _options.LoDs, fileInfo, _logger, coords);
+        
+        
+        Tiling.Tile(tempFolder, _options.Output, _options.LoDs, fileInfo, _logger, Tiles, coords);
     }
 
     public void AnalyzeFile()
@@ -124,9 +126,9 @@ public class CsvProcessor : IProcessor
                     {
                         var info = new InformationSnippet()
                         {
-                            Longitude = Convert.ToDouble(fields[xFieldIndex]),
-                            Latitude = Convert.ToDouble(fields[yFieldIndex]),
-                            Altitude = Convert.ToDouble(fields[zFieldIndex]),
+                            X = Convert.ToDouble(fields[xFieldIndex]),
+                            Y = Convert.ToDouble(fields[yFieldIndex]),
+                            Z = Convert.ToDouble(fields[zFieldIndex]),
                             Type = fields[typeFieldIndex]
                         };
                         _logger.Debug(info.ToString());
@@ -173,9 +175,9 @@ public class CsvProcessor : IProcessor
         {
             string pipelineId = file.Key;
             string input = file.Value;
-            string output = _options.Output + "/.temp/tiles/" + file.Key;
+            string output = TempFolder.GetTempFolder(_options.UseSystemTempFolder, _options.Output) + "/tiles/" + file.Key;
             ObjProcessor process = new ObjProcessor(pipelineId);
-            string result = await process.ProcessObj(output, input, Stage.Tiling, pipelineId, lod, divisions, keepIntermediate,
+            TileObjectStorage result = await process.ProcessObj(output, input, Stage.Tiling, pipelineId, lod, divisions, keepIntermediate,
                 splitZ, latitude, longitude, altitude, useSystem, sw, swg, _logger);
             Tiles.Add(file.Key, result);
         }

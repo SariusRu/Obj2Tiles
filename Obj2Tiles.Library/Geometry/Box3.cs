@@ -104,7 +104,6 @@ namespace Obj2Tiles.Library.Geometry
                 _ => throw new ArgumentOutOfRangeException(nameof(axis), axis, null)
             };
         }
-
     }
 
 }

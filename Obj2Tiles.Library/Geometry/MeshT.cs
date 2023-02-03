@@ -1,5 +1,6 @@
 ﻿using System.Diagnostics;
 using System.Globalization;
+using Obj2Tiles.Common;
 using Obj2Tiles.Library.Algos;
 using Obj2Tiles.Library.Materials;
 using SixLabors.ImageSharp;
@@ -371,54 +372,54 @@ public class MeshT : MeshBase, IMesh
         {
             var material = _materials[m];
             var facesIndexes = facesByMaterial[m];
-            Debug.WriteLine($"Working on material {m} -> {material.Name}");
+            Logging.Info($"Working on material {m} -> {material.Name}");
 
             if (facesIndexes.Count == 0)
             {
-                Debug.WriteLine("No faces with this material");
+                Logging.Info("No faces with this material");
                 continue;
             }
 
             sw.Restart();
 
-            Debug.WriteLine("Creating edges mapper");
+            Logging.Info("Creating edges mapper");
             var edgesMapper = GetEdgesMapper(facesIndexes);
-            Debug.WriteLine("Done in " + sw.ElapsedMilliseconds + "ms");
+            Logging.Info("Done in " + sw.ElapsedMilliseconds + "ms");
             sw.Restart();
 
-            Debug.WriteLine("Creating faces mapper");
+            Logging.Info("Creating faces mapper");
             var facesMapper = GetFacesMapper(edgesMapper);
-            Debug.WriteLine("Done in " + sw.ElapsedMilliseconds + "ms");
+            Logging.Info("Done in " + sw.ElapsedMilliseconds + "ms");
             sw.Restart();
 
-            Debug.WriteLine("Assembling faces clusters");
+            Logging.Info("Assembling faces clusters");
             var clusters = GetFacesClusters(facesIndexes, facesMapper);
-            Debug.WriteLine("Done in " + sw.ElapsedMilliseconds + "ms");
+            Logging.Info("Done in " + sw.ElapsedMilliseconds + "ms");
             sw.Restart();
 
-            Debug.WriteLine("Sorting clusters");
+            Logging.Info("Sorting clusters");
 
             // Sort clusters by count (improves packing density, could be removed if we notice a bottleneck)
             clusters.Sort((a, b) => b.Count.CompareTo(a.Count));
-            Debug.WriteLine("Done in " + sw.ElapsedMilliseconds + "ms");
+            Logging.Info("Done in " + sw.ElapsedMilliseconds + "ms");
             sw.Restart();
 
-            Debug.WriteLine($"Material {material.Name} has {clusters.Count} clusters");
+            Logging.Info($"Material {material.Name} has {clusters.Count} clusters");
 
-            Debug.WriteLine("Bin packing clusters");
+            Logging.Info("Bin packing clusters");
             BinPackTextures(targetFolder, m, clusters, newTextureVertices, tasks);
-            Debug.WriteLine("Done in " + sw.ElapsedMilliseconds + "ms");
+            Logging.Info("Done in " + sw.ElapsedMilliseconds + "ms");
         }
 
-        Debug.WriteLine("Sorting new texture vertices");
+        Logging.Info("Sorting new texture vertices");
         sw.Restart();
         _textureVertices = newTextureVertices.OrderBy(item => item.Value).Select(item => item.Key).ToList();
-        Debug.WriteLine("Done in " + sw.ElapsedMilliseconds + "ms");
+        Logging.Info("Done in " + sw.ElapsedMilliseconds + "ms");
 
-        Debug.WriteLine("Waiting for save tasks to finish");
+        Logging.Info("Waiting for save tasks to finish");
         sw.Restart();
         Task.WaitAll(tasks.ToArray());
-        Debug.WriteLine("Done in " + sw.ElapsedMilliseconds + "ms");
+        Logging.Info("Done in " + sw.ElapsedMilliseconds + "ms");
     }
 
     private void LoadTexturesCache()
@@ -449,7 +450,7 @@ public class MeshT : MeshBase, IMesh
         CalculateMaxMinAreaRect(clustersRects, textureWidth, textureHeight, out var maxWidth, out var maxHeight,
             out var textureArea);
 
-        Debug.WriteLine("Texture area: " + textureArea);
+        Logging.Info("Texture area: " + textureArea);
 
         var edgeLength = Math.Max(Common.NextPowerOfTwo((int)Math.Sqrt(textureArea)), 32);
 
@@ -459,7 +460,7 @@ public class MeshT : MeshBase, IMesh
         if (edgeLength < maxHeight)
             edgeLength = Common.NextPowerOfTwo((int)maxHeight);
 
-        Debug.WriteLine("Edge length: " + edgeLength);
+        Logging.Info("Edge length: " + edgeLength);
 
         // NOTE: We could enable rotations but it would be a bit more complex
         var binPack = new MaxRectanglesBinPack(edgeLength, edgeLength, false);
@@ -472,18 +473,18 @@ public class MeshT : MeshBase, IMesh
         for (var i = 0; i < clusters.Count; i++)
         {
             var cluster = clusters[i];
-            Debug.WriteLine("Processing cluster with " + cluster.Count + " faces");
+            Logging.Info("Processing cluster with " + cluster.Count + " faces");
 
             var clusterBoundary = clustersRects[i];
 
-            Debug.WriteLine("Cluster boundary (percentage): " + clusterBoundary);
+            Logging.Info("Cluster boundary (percentage): " + clusterBoundary);
 
             var clusterX = (int)Math.Floor(clusterBoundary.Left * textureWidth);
             var clusterY = (int)Math.Floor(clusterBoundary.Top * textureHeight);
             var clusterWidth = (int)Math.Max(Math.Ceiling(clusterBoundary.Width * textureWidth), 1);
             var clusterHeight = (int)Math.Max(Math.Ceiling(clusterBoundary.Height * textureHeight), 1);
 
-            Debug.WriteLine(
+            Logging.Info(
                 $"Cluster boundary (pixel): ({clusterX},{clusterY}) size {clusterWidth}x{clusterHeight}");
 
             var newTextureClusterRect = binPack.Insert(clusterWidth, clusterHeight,
@@ -491,7 +492,7 @@ public class MeshT : MeshBase, IMesh
 
             if (newTextureClusterRect.Width == 0)
             {
-                Debug.WriteLine("Somehow we could not pack everything in the texture, splitting it in two");
+                Logging.Info("Somehow we could not pack everything in the texture, splitting it in two");
 
                 textureFileName = $"{Name}-texture-{material.Name}{Path.GetExtension(material.Texture)}";
                 newPath = Path.Combine(targetFolder, textureFileName);
@@ -521,7 +522,7 @@ public class MeshT : MeshBase, IMesh
                         $"Find room for cluster in a newly created texture, this is not supposed to happen. {clusterWidth}x{clusterHeight} in {edgeLength}x{edgeLength} with occupancy {binPack.Occupancy()}");
             }
 
-            Debug.WriteLine("Found place for cluster at " + newTextureClusterRect);
+            Logging.Info("Found place for cluster at " + newTextureClusterRect);
 
             // Too long to explain this here, but it works
             var adjustedSourceY = Math.Max(texture.Height - (clusterY + clusterHeight), 0);
@@ -533,7 +534,7 @@ public class MeshT : MeshBase, IMesh
             var textureScaleX = (double)textureWidth / edgeLength;
             var textureScaleY = (double)textureHeight / edgeLength;
 
-            Debug.WriteLine("Texture copied, now updating texture vertex coordinates");
+            Logging.Info("Texture copied, now updating texture vertex coordinates");
 
             for (var index = 0; index < cluster.Count; index++)
             {
@@ -603,7 +604,7 @@ public class MeshT : MeshBase, IMesh
                     throw new ArgumentOutOfRangeException();
             }
 
-            Debug.WriteLine("Saved texture to " + newPath);
+            Logging.Info("Saved texture to " + newPath);
             tx.Dispose();
         }, newTexture, TaskCreationOptions.LongRunning);
 
@@ -896,7 +897,7 @@ public class MeshT : MeshBase, IMesh
     {
         if (removeUnused)
         {
-            Console.WriteLine("Removing Vertices");
+            Logging.Info("Removing Vertices");
             RemoveUnusedVerticesAndUvs();
         }
         
@@ -1003,7 +1004,7 @@ public class MeshT : MeshBase, IMesh
             }
             catch (Exception ex)
             {
-                Console.WriteLine("Failed: " + ex.Message);
+                Logging.Error("Failed: ", ex);
             }
             
         }
@@ -1106,7 +1107,7 @@ public class MeshT : MeshBase, IMesh
 
                             File.Delete(newTexturePath);
 
-                        Console.WriteLine($" -> Compressing texture '{material.Texture}'");
+                        Logging.Info($"Compressing texture '{material.Texture}'");
 
                         using (var image = Image.Load(material.Texture))
                         {

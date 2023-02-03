@@ -24,6 +24,10 @@ SOFTWARE.
 */
 #endregion
 
+using System.Reflection;
+using log4net;
+using log4net.Config;
+
 namespace MeshDecimatorCore
 {
     #region ILogger
@@ -58,23 +62,17 @@ namespace MeshDecimatorCore
     public static class Logging
     {
         #region Fields
-        private static ILogger logger = null;
-        private static object syncObj = new object();
+        private static ILog _logger = null;
         #endregion
 
         #region Properties
         /// <summary>
         /// Gets or sets the active logger.
         /// </summary>
-        public static ILogger Logger
+        public static ILog Logger
         {
-            get { return logger; }
-            set {
-                lock (syncObj)
-                {
-                    logger = value;
-                }
-            }
+            get { return _logger; }
+            set { _logger = value; }
         }
         #endregion
 
@@ -84,7 +82,9 @@ namespace MeshDecimatorCore
         /// </summary>
         static Logging()
         {
-            logger = new Loggers.ConsoleLogger();
+            var logRepository = LogManager.GetRepository(Assembly.GetEntryAssembly());
+            XmlConfigurator.Configure(logRepository, new FileInfo("log4net.config"));
+            _logger = LogManager.GetLogger(MethodBase.GetCurrentMethod()?.DeclaringType);
         }
         #endregion
 
@@ -96,13 +96,7 @@ namespace MeshDecimatorCore
         /// <param name="text">The text.</param>
         public static void LogVerbose(string text)
         {
-            lock (syncObj)
-            {
-                if (logger != null)
-                {
-                    logger.LogVerbose(text);
-                }
-            }
+            _logger.Info(text);
         }
 
         /// <summary>
@@ -122,14 +116,8 @@ namespace MeshDecimatorCore
         /// </summary>
         /// <param name="text">The text.</param>
         public static void LogWarning(string text)
-        {
-            lock (syncObj)
-            {
-                if (logger != null)
-                {
-                    logger.LogWarning(text);
-                }
-            }
+        { 
+            _logger.Warn(text);
         }
 
         /// <summary>
@@ -150,13 +138,7 @@ namespace MeshDecimatorCore
         /// <param name="text">The text.</param>
         public static void LogError(string text)
         {
-            lock (syncObj)
-            {
-                if (logger != null)
-                {
-                    logger.LogError(text);
-                }
-            }
+            _logger.Error(text);
         }
 
         /// <summary>

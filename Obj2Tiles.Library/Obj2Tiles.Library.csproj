@@ -10,4 +10,8 @@
         <PackageReference Include="SixLabors.ImageSharp" Version="2.1.3" />
     </ItemGroup>
 
+    <ItemGroup>
+      <ProjectReference Include="..\Obj2Tiles.Common\Obj2Tiles.Common.csproj" />
+    </ItemGroup>
+
 </Project>

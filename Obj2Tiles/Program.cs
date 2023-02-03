@@ -2,6 +2,7 @@
 using CommandLine;
 using log4net;
 using log4net.Config;
+using Obj2Tiles.Common;
 using Obj2Tiles.Csv;
 using Obj2Tiles.Library;
 using Obj2Tiles.Obj;
@@ -14,25 +15,20 @@ internal class Program
     {
         var oResult = await Parser.Default.ParseArguments<Options>(args).WithParsedAsync(Run);
 
-        if (oResult.Tag == ParserResultType.NotParsed) Console.WriteLine("Usage: obj2tiles [options]");
+        if (oResult.Tag == ParserResultType.NotParsed) Logging.Info("Usage: obj2tiles [options]");
     }
 
     private static async Task Run(Options opts)
     {
-        Console.WriteLine();
-        Console.WriteLine(" *** OBJ to Tiles ***");
-        Console.WriteLine();
+        Logging.Info(" *** OBJ to Tiles ***");
 
-        Console.WriteLine("=> Configuring Log4Net and swtiching to Log4Net for output");
-        var logRepository = LogManager.GetRepository(Assembly.GetEntryAssembly());
-        XmlConfigurator.Configure(logRepository, new FileInfo("log4net.config"));
-        var logger = LogManager.GetLogger(MethodBase.GetCurrentMethod()?.DeclaringType);
+        Logging.Info("=> Configuring Log4Net and swtiching to Log4Net for output");
 
-        logger.Info("Switched to Log4Net");
+        Logging.Info("Switched to Log4Net");
 
         if (!CheckOptions(opts))
         {
-            logger.Error("Some options are wrong");
+            Logging.Error("Some options are wrong");
             return;
         }
 
@@ -70,31 +66,31 @@ internal class Program
     {
         if (string.IsNullOrWhiteSpace(opts.Input))
         {
-            Console.WriteLine(" !> Input file is required");
+            Logging.Warn("Input file is required");
             return false;
         }
 
         if (!File.Exists(opts.Input))
         {
-            Console.WriteLine(" !> Input file does not exist");
+            Logging.Warn("Input file does not exist");
             return false;
         }
 
         if (string.IsNullOrWhiteSpace(opts.Output))
         {
-            Console.WriteLine(" !> Output folder is required");
+            Logging.Warn("Output folder is required");
             return false;
         }
 
         if (opts.LoDs < 1)
         {
-            Console.WriteLine(" !> LODs must be at least 1");
+            Logging.Warn("LODs must be at least 1");
             return false;
         }
 
         if (opts.Divisions < 0)
         {
-            Console.WriteLine(" !> Divisions must be non-negative");
+            Logging.Warn("Divisions must be non-negative");
             return false;
         }
 

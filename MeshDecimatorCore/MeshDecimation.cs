@@ -24,6 +24,9 @@ SOFTWARE.
 */
 #endregion
 
+using System.Reflection;
+using log4net;
+using log4net.Config;
 using MeshDecimatorCore.Algorithms;
 
 namespace MeshDecimatorCore

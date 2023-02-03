@@ -7,6 +7,6 @@ public static class InformationOutput
     {
         double percent = (double)current / (double)total * 100.0;
         percent = Math.Round(percent, 2);
-        Console.WriteLine(" {0} {1}/{2} ({3}%)", prefix, current, total, percent);
+        Logging.Info($"{prefix} {current}/{total} ({percent}%)");
     }
 }

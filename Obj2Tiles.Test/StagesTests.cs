@@ -3,6 +3,7 @@ using System.IO;
 using System.Linq;
 using Newtonsoft.Json;
 using NUnit.Framework;
+using Obj2Tiles.Common;
 using Obj2Tiles.Library.Geometry;
 using Obj2Tiles.Obj.Stages;
 using Obj2Tiles.Stages.Model;
@@ -59,7 +60,7 @@ public class StagesTests
 
         var transform = gpsCoords.ToEcefTransform();
 
-        Console.WriteLine(JsonConvert.SerializeObject(transform, Formatting.Indented));
+        Logging.Info(JsonConvert.SerializeObject(transform, Formatting.Indented));
     }
 
     [Test]
@@ -74,7 +75,7 @@ public class StagesTests
 
         var transform = gpsCoords.ToEcefTransform();
 
-        Console.WriteLine(JsonConvert.SerializeObject(transform, Formatting.Indented));
+        Logging.Info(JsonConvert.SerializeObject(transform, Formatting.Indented));
     }
 
     [Test]
