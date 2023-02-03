@@ -22,7 +22,7 @@ public class Tiling
         int lods,
         CsvInformationHolder csvInformationHolders,
         ILog logger,
-        Dictionary<string, TileObjectStorage> tilesLocation,
+        Dictionary<string, TileObjectStorage> tilesInformation,
         GpsCoords? coords = null)
     {
         logger.Info("Generating tileset.json");
@@ -33,6 +33,12 @@ public class Tiling
         coords = DefaultGpsCoords;
         //}
 
+        foreach (var element in tilesInformation)
+        {
+            element.Value.filePath = "." + element.Value.filePath.Replace(destPath, "");
+            element.Value.filePath = element.Value.filePath.Replace("\\", "/");
+        }
+        
         csvInformationHolders.Scale();
         
         double baseError = GetError(csvInformationHolders);
@@ -85,9 +91,9 @@ public class Tiling
                 Children = new List<TileElement>(),
                 Content = new Content
                 {
-                    Uri = $"./temp/tiles/{element.Type}/tileset.json"
+                    Uri = tilesInformation[element.Type].filePath
                 },
-                BoundingVolume = box3.ToBoundingVolumeCsv(),
+                BoundingVolume = tilesInformation[element.Type].BoudingBox,
                 Transform = element.ConvertToECEF()
             };
 

@@ -92,7 +92,7 @@ public class ObjProcessor : IProcessor
 
             sw.Restart();
 
-            StagesFacade.Tile(destFolderSplit, output, lod, boundsMapper, gpsCoords);
+            objStorage = StagesFacade.Tile(destFolderSplit, output, lod, boundsMapper, gpsCoords);
 
             logger.Info($"Tiling stage done in {sw.Elapsed}");
         }

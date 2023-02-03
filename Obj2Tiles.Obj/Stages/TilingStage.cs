@@ -2,7 +2,6 @@
 using Obj2Tiles.Common;
 using Obj2Tiles.Library.Geometry;
 using Obj2Tiles.Stages.Model;
-using log4net;
 using Obj2Tiles.Library;
 
 namespace Obj2Tiles.Obj.Stages;
@@ -110,11 +109,15 @@ public static partial class StagesFacade
         var globalBox = new Box3(minX, minY, minZ, maxX, maxY, maxZ);
 
         tileset.Root.BoundingVolume = globalBox.ToBoundingVolume();
-        
-        string path = 
 
-        File.WriteAllText(Path.Combine(destPath, "tileset.json"),
+        string path = Path.Combine(destPath, "tileset.json");
+
+        storage.filePath = path;
+        storage.BoudingBox = globalBox.ToBoundingVolume();
+
+        File.WriteAllText(path,
             JsonConvert.SerializeObject(tileset, Formatting.Indented));
+        return storage;
     }
 
     // Calculate mesh geometric error

@@ -1,6 +1,6 @@
 ﻿using Newtonsoft.Json;
 
-namespace Obj2Tiles.Stages.Model;
+namespace Obj2Tiles.Library;
 
 public class Asset
 {

@@ -1,5 +1,6 @@
 ﻿using System.Diagnostics;
 using Obj2Tiles.Common;
+using Obj2Tiles.Library;
 using Obj2Tiles.Library.Geometry;
 using Obj2Tiles.Obj.Tiles;
 using Obj2Tiles.Stages.Model;
