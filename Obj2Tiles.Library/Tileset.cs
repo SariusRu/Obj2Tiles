@@ -12,6 +12,11 @@ public class BoundingVolume
 {
     [JsonProperty("box")]
     public double[]? Box { get; set; }
+    
+    [JsonProperty("region")]
+    public double[]? Region { get; set; }
+    
+    
 }
 
 public class Content

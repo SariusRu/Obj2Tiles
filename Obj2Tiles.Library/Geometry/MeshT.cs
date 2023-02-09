@@ -356,9 +356,11 @@ public class MeshT : MeshBase, IMesh
 
     private void TrimTextures(string targetFolder)
     {
-        Debug.WriteLine("Trimming textures of " + Name);
+        Logging.Info("Trimming textures of " + Name);
 
         var tasks = new List<Task>();
+        
+        Logging.Info("Loading Texture Cache");
 
         LoadTexturesCache();
 
@@ -689,6 +691,7 @@ public class MeshT : MeshBase, IMesh
         return area;
     }
 
+    //TODO: High Performance Loss
     private static List<List<int>> GetFacesClusters(IEnumerable<int> facesIndexes,
         IReadOnlyDictionary<int, List<int>> facesMapper)
     {
@@ -702,8 +705,9 @@ public class MeshT : MeshBase, IMesh
 
         while (remainingFacesIndexes.Count > 0)
         {
+            
             var cnt = currentCluster.Count;
-
+            Logging.Info($"{remainingFacesIndexes.Count} remaining. Working with cluster of {cnt} faces");
             for (var index = 0; index < currentCluster.Count; index++)
             {
                 var faceIndex = currentCluster[index];
@@ -711,11 +715,9 @@ public class MeshT : MeshBase, IMesh
                 if (!facesMapper.TryGetValue(faceIndex, out var connectedFaces))
                     continue;
 
-                for (var i = 0; i < connectedFaces.Count; i++)
+                List<int> distinc = connectedFaces.Distinct().ToList();
+                foreach (int connectedFace in distinc.Where(connectedFace => !currentCluster.Contains(connectedFace)))
                 {
-                    var connectedFace = connectedFaces[i];
-                    if (currentCluster.Contains(connectedFace)) continue;
-
                     currentCluster.Add(connectedFace);
                     remainingFacesIndexes.Remove(connectedFace);
                 }
@@ -740,7 +742,7 @@ public class MeshT : MeshBase, IMesh
         clusters.Add(currentCluster);
         return clusters;
     }
-
+    
     private static Dictionary<int, List<int>> GetFacesMapper(Dictionary<Edge, List<int>> edgesMapper)
     {
         var facesMapper = new Dictionary<int, List<int>>();
@@ -752,16 +754,17 @@ public class MeshT : MeshBase, IMesh
                 var faceIndex = edge.Value[i];
                 if (!facesMapper.ContainsKey(faceIndex))
                     facesMapper.Add(faceIndex, new List<int>());
-
-                for (var index = 0; index < edge.Value.Count; index++)
-                {
-                    var f = edge.Value[index];
-                    if (f != faceIndex)
-                        facesMapper[faceIndex].Add(f);
-                }
+                facesMapper[faceIndex].AddRange(edge.Value);
             }
         }
 
+        Logging.Info("Done adding edges");
+        Logging.Info($"Removing duplicates from {facesMapper.Count} elements");
+        foreach (var VARIABLE in facesMapper)
+        {
+            List<int> edges = VARIABLE.Value;
+            edges.RemoveAll(e => e.Equals(VARIABLE.Key));
+        }
         return facesMapper;
     }
 
@@ -1021,11 +1024,11 @@ public class MeshT : MeshBase, IMesh
         var materialsPath = Path.ChangeExtension(path, "mtl");
         
         //TODO: WHY IS THIS TAKING SO LONG?
-        //if (TexturesStrategy == TexturesStrategy.Repack || TexturesStrategy == TexturesStrategy.RepackCompressed)
-        //{
-        //    Console.WriteLine("Trimming Textures");
-        //    TrimTextures(Path.GetDirectoryName(path));
-        //}
+        if (TexturesStrategy == TexturesStrategy.Repack || TexturesStrategy == TexturesStrategy.RepackCompressed)
+        {
+            Logging.Info("Trimming Textures");
+            //TrimTextures(Path.GetDirectoryName(path));
+        }
             
 
         using (var writer = new FormattingStreamWriter(path, CultureInfo.InvariantCulture))
@@ -1035,22 +1038,14 @@ public class MeshT : MeshBase, IMesh
 
             writer.WriteLine("mtllib {0}", Path.GetFileName(materialsPath));
 
-            foreach (var vertex in _vertices)
+            foreach (Vertex3 vertex in _vertices)
             {
-                writer.Write("v ");
-                writer.Write(vertex.X);
-                writer.Write(" ");
-                writer.Write(vertex.Y);
-                writer.Write(" ");
-                writer.WriteLine(vertex.Z);
+                writer.WriteLine(vertex.ToObj());
             }
 
-            foreach (var textureVertex in _textureVertices)
+            foreach (Vertex2 textureVertex in _textureVertices)
             {
-                writer.Write("vt ");
-                writer.Write(textureVertex.X);
-                writer.Write(" ");
-                writer.WriteLine(textureVertex.Y);
+                writer.WriteLine(textureVertex.ToObj());
             }
 
             var materialFaces = from face in _faces

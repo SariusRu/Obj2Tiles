@@ -25,55 +25,60 @@ public class MeshUtils
         var currentMaterial = string.Empty;
         var deps = new List<string>();
 
+        string? line = "";
+
         while (true)
         {
-            var line = reader.ReadLine();
+            line = reader.ReadLine();
 
             if (line == null) break;
 
             if (string.IsNullOrWhiteSpace(line) || line.StartsWith("#"))
                 continue;
 
-            var segs = line.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+            string[] lineSegments = line.Split(' ', StringSplitOptions.RemoveEmptyEntries);
 
-            switch (segs[0])
+            switch (lineSegments[0])
             {
-                case "v" when segs.Length >= 4:
+                case "v" when lineSegments.Length >= 4:
                     vertices.Add(new Vertex3(
-                        double.Parse(segs[1], CultureInfo.InvariantCulture),
-                        double.Parse(segs[2], CultureInfo.InvariantCulture),
-                        double.Parse(segs[3], CultureInfo.InvariantCulture)));
+                        double.Parse(lineSegments[1], CultureInfo.InvariantCulture),
+                        double.Parse(lineSegments[2], CultureInfo.InvariantCulture),
+                        double.Parse(lineSegments[3], CultureInfo.InvariantCulture)));
                     break;
-                case "vt" when segs.Length >= 3:
+                case "vt" when lineSegments.Length >= 3:
                     var vtx = new Vertex2(
-                        double.Parse(segs[1], CultureInfo.InvariantCulture),
-                        double.Parse(segs[2], CultureInfo.InvariantCulture));
+                        double.Parse(lineSegments[1], CultureInfo.InvariantCulture),
+                        double.Parse(lineSegments[2], CultureInfo.InvariantCulture));
 
                     if (vtx.X < 0 || vtx.Y < 0 || vtx.X > 1 || vtx.Y > 1)
                     {
-                        vtx = new Vertex2(0.5, 0.5);
+                        int x = vtx.X < 0 ? 0 : 1;
+                        int y = vtx.Y < 0 ? 0 : 1;
+                        
+                        vtx = new Vertex2(x, y);
                         //throw new Exception("Invalid texture coordinates: " + vtx);
                     }
                         
                     
                     textureVertices.Add(vtx);
                     break;
-                case "vn" when segs.Length == 3:
+                case "vn" when lineSegments.Length == 3:
                     // Skipping normals
                     break;
-                case "usemtl" when segs.Length == 2:
+                case "usemtl" when lineSegments.Length == 2:
                 {
-                    if (!materialsDict.ContainsKey(segs[1]))
-                        throw new Exception($"Material {segs[1]} not found");
+                    if (!materialsDict.ContainsKey(lineSegments[1]))
+                        throw new Exception($"Material {lineSegments[1]} not found");
 
-                    currentMaterial = segs[1];
+                    currentMaterial = lineSegments[1];
                     break;
                 }
-                case "f" when segs.Length == 4:
+                case "f" when lineSegments.Length == 4:
                 {
-                    var first = segs[1].Split('/');
-                    var second = segs[2].Split('/');
-                    var third = segs[3].Split('/');
+                    var first = lineSegments[1].Split('/');
+                    var second = lineSegments[2].Split('/');
+                    var third = lineSegments[3].Split('/');
 
                     var hasTexture = first.Length > 1 && first[1].Length > 0 && second.Length > 1 &&
                                      second[1].Length > 0 && third.Length > 1 && third[1].Length > 0;
@@ -114,9 +119,9 @@ public class MeshUtils
 
                     break;
                 }
-                case "mtllib" when segs.Length == 2:
+                case "mtllib" when lineSegments.Length == 2:
                 {
-                    var mtlFileName = segs[1];
+                    var mtlFileName = lineSegments[1];
                     var mtlFilePath = Path.Combine(Path.GetDirectoryName(fileName) ?? string.Empty, mtlFileName);
                     
                     var mats = Material.ReadMtl(mtlFilePath, out var mtlDeps);

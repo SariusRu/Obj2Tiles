@@ -53,4 +53,9 @@ public class Vertex2
     {
         return new Vertex2((b.X - X) * perc + X, (b.Y - Y) * perc + Y);
     }
+
+    public string ToObj()
+    {
+        return $"vt {X} {Y}";
+    }
 }

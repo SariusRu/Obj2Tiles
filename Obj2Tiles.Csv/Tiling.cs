@@ -11,7 +11,7 @@ public class Tiling
 {
     private static readonly GpsCoords DefaultGpsCoords = new()
     {
-        Altitude = 80,
+        Altitude = 200,
         Latitude = 44.56573501069636,
         Longitude = -123.27892951523633,
     };

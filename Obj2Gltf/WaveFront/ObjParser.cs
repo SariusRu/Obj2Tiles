@@ -79,9 +79,11 @@ namespace SilentWave.Obj2Gltf.WaveFront
                 var currentGeometries = model.GetOrAddGeometries("default");
                 Face currentFace = null;
 
+                string line = "";
+
                 while (!_reader.EndOfStream)
                 {
-                    var line = _reader.ReadLine().Trim();
+                    line = _reader.ReadLine().Trim();
                     if (string.IsNullOrEmpty(line)) continue;
                     if (line.StartsWith(Statements.Comment)) continue;
                     if (StartWith(line, Statements.MtlLib))

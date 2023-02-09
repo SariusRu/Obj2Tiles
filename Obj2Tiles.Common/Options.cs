@@ -9,9 +9,6 @@ public class Options
 
     [Value(1, MetaName = "Output", Required = true, HelpText = "Output folder.")]
     public string Output { get; set; } = "";
-    
-    [Value(3, MetaName = "InputModels", Required = false, HelpText = "Input-Files for CSV-Options")]
-    public string InputModels { get; set; } = "";
 
     [Option('s', "stage", Required = false, HelpText = "Stage to stop at (Decimation, Splitting, Tiling)",
         Default = Stage.Tiling)]
@@ -44,6 +41,9 @@ public class Options
     [Option("keep-intermediate", Required = false, HelpText = "Keeps the intermediate files (do not cleanup)",
         Default = false)]
     public bool KeepIntermediateFiles { get; set; }
+    
+    [Option('i', "input", Required = false, HelpText = "Loads files for CSV")]
+    public string InputModels { get; set; } = "";
 }
 
 public enum Stage

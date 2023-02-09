@@ -20,7 +20,7 @@ public class CsvProcessor : IProcessor
     private Dictionary<string, string> Objects3D { get; }
     private Dictionary<string, TileObjectStorage> Tiles { get; }
     private string InputCsvFile { get; }
-    private string[] InputModels { get; }
+    private List<string> InputModels { get; }
     private CsvInformationHolder fileInfo { get; set; }
 
     public CsvProcessor(Options opt, string pipelineId)
@@ -34,7 +34,14 @@ public class CsvProcessor : IProcessor
         var logRepository = LogManager.GetRepository(Assembly.GetEntryAssembly());
         XmlConfigurator.Configure(logRepository, new FileInfo("log4net.config"));
         _logger = LogManager.GetLogger(MethodBase.GetCurrentMethod()?.DeclaringType);
-        InputModels = _options.InputModels.Split("'");
+        if (!String.IsNullOrWhiteSpace(_options.InputModels))
+        {
+            InputModels = _options.InputModels.Split(",").ToList();
+        }
+        else
+        {
+            InputModels = new List<string>();
+        }
     }
 
     public async Task Init()
@@ -43,7 +50,7 @@ public class CsvProcessor : IProcessor
         {
             AnalyzeFile();
 
-            if (InputModels.Length < Objects3D.Count || InputModels.Length > Objects3D.Count)
+            if (InputModels.Count < Objects3D.Count || InputModels.Count > Objects3D.Count)
             {
                 _logger.Warn("Options could not be read correctly. Asking for user Input");
                 foreach (KeyValuePair<string, string> objectType in Objects3D)
@@ -202,12 +209,13 @@ public class CsvProcessor : IProcessor
             {
                 //Copy file to Output Folder
                 string output = TempFolder.GetTempFolder(_options.UseSystemTempFolder, _options.Output) + "\\tiles\\" + file.Key;
+                Directory.CreateDirectory(output);
                 string outputFileName = output + "\\tileset.json";
                 File.Copy(file.Value, outputFileName, true);
 
                 //Check for any dependencies
                 List<string> associatedFiles = new List<string>();
-                if (System.IO.File.Exists(outputFileName))
+                if (File.Exists(outputFileName))
                 {
                     Tileset tileset = JsonConvert.DeserializeObject<Tileset>(File.ReadAllText(outputFileName));
                     associatedFiles = AnalyzeTileset(tileset.Root.Children);
