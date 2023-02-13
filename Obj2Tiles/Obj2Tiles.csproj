@@ -18,7 +18,6 @@
         <ProjectReference Include="..\Obj2Tiles.Csv\Obj2Tiles.Csv.csproj" />
         <ProjectReference Include="..\Obj2Tiles.Library\Obj2Tiles.Library.csproj" />
         <ProjectReference Include="..\Obj2Tiles.Obj\Obj2Tiles.Obj.csproj" />
-        <ProjectReference Include="..\Onbj2Tiles.Obj\Onbj2Tiles.Obj.csproj" />
     </ItemGroup>
 
     <ItemGroup>
