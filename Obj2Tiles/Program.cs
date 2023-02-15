@@ -22,7 +22,7 @@ internal class Program
     {
         Logging.Info(" *** OBJ to Tiles ***");
 
-        Logging.Info("=> Configuring Log4Net and swtiching to Log4Net for output");
+        Logging.Info("=> Configuring Log4Net and switching to Log4Net for output");
 
         Logging.Info("Switched to Log4Net");
 
@@ -45,7 +45,7 @@ internal class Program
         switch (type)
         {
             case InputType.CSV:
-                CsvProcessor processCsv = new CsvProcessor(opts, pipelineId);
+                CsvProcessor processCsv = new CsvProcessor(opts);
                 await processCsv.Init();
                 break;
             case InputType.OBJ:

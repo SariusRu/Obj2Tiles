@@ -1,5 +1,7 @@
-﻿using log4net;
+﻿using System.Diagnostics;
+using log4net;
 using Newtonsoft.Json;
+using Obj2Tiles.Common;
 using Obj2Tiles.Library;
 using Obj2Tiles.Library.Geometry;
 using Obj2Tiles.Obj;
@@ -17,7 +19,8 @@ public class Tiling
     };
 
 
-    public static void Tile(string sourcePath,
+    public static string Tile(GridField field,
+        string sourcePath,
         string destPath,
         int lods,
         CsvInformationHolder csvInformationHolders,
@@ -26,31 +29,46 @@ public class Tiling
         GpsCoords? coords = null)
     {
         logger.Info("Generating tileset.json");
-
-        //if (coords == null)
-        //{
         logger.Info("Using default coordinates");
         coords = DefaultGpsCoords;
-        //}
 
-        foreach (var element in tilesInformation)
-        {
-            element.Value.filePath = "." + element.Value.filePath.Replace(destPath, "");
-            element.Value.filePath = element.Value.filePath.Replace("\\", "/");
-        }
-        
-        csvInformationHolders.Scale();
-        
         double baseError = GetError(csvInformationHolders);
+        baseError = 100;
 
-        double minX = csvInformationHolders.GetMinX();
-        double maxX = csvInformationHolders.GetMaxX();
-        double minY = csvInformationHolders.GetMinY();
-        double maxY = csvInformationHolders.GetMaxY();
-        double minZ = csvInformationHolders.GetMinZ();
-        double maxZ = csvInformationHolders.GetMaxZ();
-        
-        var tileset = new Tileset
+        // Load tileset to be inserted and add bounding volumes
+        // Problem at the moment: Bounding Volume uses only point information
+        // For now: Add biggest possible object to the elements
+
+        double xOffest = 0.0;
+        double yOffest = 0.0;
+        double zOffest = 0.0;
+
+        foreach (TileObjectStorage tile in tilesInformation.Values)
+        {
+            if (xOffest < Math.Abs(tile.BoudingBox.BoxOffsetX()))
+            {
+                xOffest = Math.Abs(tile.BoudingBox.BoxOffsetX());
+            }
+
+            if (yOffest < Math.Abs(tile.BoudingBox.BoxOffsetY()))
+            {
+                yOffest = Math.Abs(tile.BoudingBox.BoxOffsetY());
+            }
+
+            if (zOffest < Math.Abs(tile.BoudingBox.BoxOffsetZ()))
+            {
+                zOffest = Math.Abs(tile.BoudingBox.BoxOffsetZ());
+            }
+        }
+
+        double minX = csvInformationHolders.GetMinX() - xOffest;
+        double maxX = csvInformationHolders.GetMaxX() + xOffest;
+        double minY = csvInformationHolders.GetMinY() - yOffest;
+        double maxY = csvInformationHolders.GetMaxY() + yOffest;
+        double minZ = csvInformationHolders.GetMinZ() - zOffest;
+        double maxZ = csvInformationHolders.GetMaxZ() + zOffest;
+
+        Tileset tileset = new Tileset
         {
             Asset = new Asset { Version = "1.0" },
             GeometricError = baseError,
@@ -63,35 +81,18 @@ public class Tiling
             }
         };
 
-        foreach (var element in csvInformationHolders.List)
+        foreach (InformationSnippet element in csvInformationHolders.ScaledList)
         {
-            var currentTileElement = tileset.Root;
+            TileElement? currentTileElement = tileset.Root;
 
-            //Calculate bounding Box
-
-            Vertex3 min = new Vertex3(
-                element.X,
-                element.Z,
-                element.Y);
-
-            Vertex3 max = new Vertex3(
-                element.X + 10,
-                element.Z + 10,
-                element.Y + 10
-            );
-
-            Box3 box3 = new Box3(min, max);
-            
-            logger.Info(box3.ToString());
-
-            var tile = new TileElement
+            TileElement tile = new TileElement
             {
-                GeometricError = 100,
+                GeometricError = tilesInformation[element.Type].geometricError,
                 Refine = "ADD",
                 Children = new List<TileElement>(),
                 Content = new Content
                 {
-                    Uri = tilesInformation[element.Type].filePath
+                    Uri = tilesInformation[element.Type].filePathRelative
                 },
                 BoundingVolume = tilesInformation[element.Type].BoudingBox,
                 Transform = element.ConvertToECEF()
@@ -103,11 +104,41 @@ public class Tiling
         //var masterDescriptors = boundsMapper[0].Keys;
 
 
-        var globalBox = new Box3(minX, minY, minZ, maxX, maxY, maxZ);
+        Box3 globalBox = new Box3(minX, minY, minZ, maxX, maxY, maxZ);
         tileset.Root.BoundingVolume = globalBox.ToBoundingVolumeCsv();
         logger.Info("Writing File");
-        File.WriteAllText(Path.Combine(destPath, "tileset.json"),
-            JsonConvert.SerializeObject(tileset, Formatting.Indented));
+        JsonSerializerSettings settings = new JsonSerializerSettings()
+        {
+            NullValueHandling = NullValueHandling.Ignore
+        };
+        string filePath = Path.Combine(destPath, field.GetName()+".json");
+        File.WriteAllText(filePath,
+            JsonConvert.SerializeObject(tileset, settings));
+        CheckFile(filePath);
+        return filePath;
+    }
+
+    private static void CheckFile(string filePath)
+    {
+        string cmd = $"npx --yes 3d-tiles-validator --tilesetFile {filePath}";
+        Logging.Info(cmd);
+        ProcessStartInfo processInfo = new ProcessStartInfo("cmd.exe", "/c " + cmd);
+        processInfo.UseShellExecute = false;
+        processInfo.RedirectStandardOutput = true;
+
+        int exitCode = 1;
+        using (Process? process = Process.Start(processInfo))
+        {
+            if (process != null)
+            {
+                string output = process.StandardOutput.ReadToEnd();
+                process.WaitForExit();
+                Logging.Info(output);
+                exitCode = process.ExitCode;
+            }
+        }
+
+        Logging.Info($"Exited with {exitCode}");
     }
 
     /// <summary>
@@ -121,5 +152,90 @@ public class Tiling
         double heightM = csvInformationHolders.GetHeight();
         //Diagonal
         return Math.Sqrt(widthM * widthM + heightM * heightM);
+    }
+
+    private static double GetError(List<ITile> field)
+    {
+        double baseError = 100;
+        foreach (ITile tile in field)
+        {
+            if (tile.BaseError > baseError)
+            {
+                baseError = tile.BaseError;
+            }
+        }
+        return baseError;
+    }
+
+    public static string TileLod(ITile fieldPath, ILog logger)
+    {
+        if (fieldPath is LodTiles tile)
+        {
+            logger.Info("Generating tileset.json");
+            logger.Info("Using default coordinates");
+
+            tile.LoadTiles();
+            double baseError = GetError(tile.Tiles);
+            
+
+            double minX = tile.GetMinX();
+            double maxX = tile.GetMaxX();
+            double minY = tile.GetMinY();
+            double maxY = tile.GetMaxY();
+            double minZ = tile.GetMinZ();
+            double maxZ = tile.GetMaxZ();
+
+            Tileset tileset = new Tileset
+            {
+                Asset = new Asset { Version = "1.0" },
+                GeometricError = baseError,
+                Root = new TileElement
+                {
+                    GeometricError = baseError,
+                    Refine = "ADD",
+                    //Transform = coords.ToEcefTransform(),
+                    Children = new List<TileElement>()
+                }
+            };
+
+            foreach (ITile element in tile.Tiles)
+            {
+                TileElement? currentTileElement = tileset.Root;
+
+                TileElement tileElement = new TileElement
+                {
+                    GeometricError = element.BaseError,
+                    Refine = "ADD",
+                    Children = new List<TileElement>(),
+                    Content = new Content
+                    {
+                        Uri = element.GetRelativeFilePath()
+                    },
+                    BoundingVolume = element.GetBoundingVolume(),
+                    //Transform = element.ConvertToECEF()
+                };
+
+                currentTileElement.Children.Add(tileElement);
+            }
+
+            //var masterDescriptors = boundsMapper[0].Keys;
+
+
+            Box3 globalBox = new Box3(minX, minY, minZ, maxX, maxY, maxZ);
+            tileset.Root.BoundingVolume = globalBox.ToBoundingVolumeCsv();
+            logger.Info("Writing File");
+            JsonSerializerSettings settings = new JsonSerializerSettings()
+            {
+                NullValueHandling = NullValueHandling.Ignore
+            };
+            string filePath = Path.Combine(fieldPath.Path, fieldPath.GetName() + ".json");
+            File.WriteAllText(filePath,
+                JsonConvert.SerializeObject(tileset, settings));
+            CheckFile(filePath);
+            return filePath;
+        }
+
+        Logging.Warn("Expected LodTiles, but got LOD0-Tiles");
+        return fieldPath.Path;
     }
 }

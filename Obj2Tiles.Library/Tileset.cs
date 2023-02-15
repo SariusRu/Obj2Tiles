@@ -15,6 +15,21 @@ public class BoundingVolume
     
     [JsonProperty("region")]
     public double[]? Region { get; set; }
+
+    public double BoxOffsetX()
+    {
+        return Box != null ? Box[3] : 0.0;
+    }
+    
+    public double BoxOffsetY()
+    {
+        return Box != null ? Box[7] : 0.0;
+    }
+    
+    public double BoxOffsetZ()
+    {
+        return Box != null ? Box[11] : 0.0;
+    }
     
     
 }

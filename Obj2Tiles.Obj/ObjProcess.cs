@@ -42,6 +42,14 @@ public class ObjProcessor : IProcessor
     }
 
     public async Task<TileObjectStorage> ProcessObj(string output, string input, Stage stopAt, string pipelineId,
+        int lod, int division, bool keepIntermediate, bool splitZ, bool useSystem, Stopwatch sw,
+        Stopwatch swg, ILog logger)
+    {
+        return await ProcessObj(output, input, stopAt, pipelineId, lod, division, keepIntermediate,
+            splitZ, null, null, 0.0, useSystem, sw, swg, _logger);
+    }
+    
+    public async Task<TileObjectStorage> ProcessObj(string output, string input, Stage stopAt, string pipelineId,
         int lod, int division, bool keepIntermediate, bool splitZ, double? latitude, double? longitude, double altitude,
         bool useSystem, Stopwatch sw,
         Stopwatch swg, ILog logger)

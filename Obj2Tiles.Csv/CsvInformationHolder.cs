@@ -1,12 +1,43 @@
-﻿namespace Obj2Tiles.Csv;
+﻿using Obj2Tiles.Common;
+
+namespace Obj2Tiles.Csv;
 
 public class CsvInformationHolder
 {
-    public List<InformationSnippet> List { get; }
+    public List<InformationSnippet> List { get; set; }
 
+    private List<InformationSnippet> _scaledList;
+
+    public List<InformationSnippet> ScaledList {
+        get
+        {
+            if (_scaledList.Count != List.Count)
+            {
+                Scale();
+                return _scaledList;
+            }
+            return _scaledList;
+        }
+    }
+
+    public (double, double, double) GetCenter()
+    {
+        double X = List.ElementAt(0).X;
+        double Y = List.ElementAt(0).Y;
+        double Z = List.ElementAt(0).Z;
+        foreach (InformationSnippet snippet in List.Skip(1))
+        {
+            X += snippet.X / 2;
+            Y += snippet.Y / 2;
+            Z += snippet.Z / 2;
+        }
+        return (X, Y, Z);
+    } 
+    
     public CsvInformationHolder()
     {
         List = new List<InformationSnippet>();
+        _scaledList = new List<InformationSnippet>();
     }
 
     public void Add(InformationSnippet info)
@@ -16,85 +47,239 @@ public class CsvInformationHolder
 
     public double GetWidth()
     {
-        double smallest = List.Select(e => e.X).Min();
-        double largest = List.Select(e => e.X).Max();
+        try
+        {
+            double smallest = List.Select(e => e.X).Min();
+            double largest = List.Select(e => e.X).Max();
 
-        double difference = largest - smallest;
+            double difference = largest - smallest;
+            if (difference < 0)
+            {
+                difference *= -1;
+            }
+
+            return difference;
+        }
+        catch (Exception ex)
+        {
+            Logging.Error("Failed to retrieve Width", ex);
+        }
+
+        return 0.0;
+    }
+
+    public int GetGridXDimension()
+    {
+        int smallest = GetGridLowestX();
+        int largest = GetGridLargestX();
+
+        int difference = largest - smallest;
         if (difference < 0)
         {
             difference *= -1;
         }
+
+        return difference;
+    }
+
+    public int GetGridYDimension()
+    {
+        int smallest = GetGridLowestY();
+        int largest = GetGridLargestY();
+
+        int difference = largest - smallest;
+        if (difference < 0)
+        {
+            difference *= -1;
+        }
+
         return difference;
     }
 
     public double GetHeight()
     {
-        double smallest = List.Select(e => e.Y).Min();
-        double largest = List.Select(e => e.Y).Max();
-        
-        double difference = largest - smallest;
-        if (difference < 0)
+        try
         {
-            difference *= -1;
+            double smallest = List.Select(e => e.Y).Min();
+            double largest = List.Select(e => e.Y).Max();
+
+            double difference = largest - smallest;
+            if (difference < 0)
+            {
+                difference *= -1;
+            }
+
+            return difference;
+        }
+        catch (Exception ex)
+        {
+            Logging.Error("Failed to retrieve Width", ex);
         }
 
-        return difference;
+        return 0.0;
     }
 
-    public void Scale()
+    private void Scale()
     {
-        double minX = GetMinX();
-        double minY = GetMinY();
-        double minZ = GetMinZ();
+        double minX = List.Min(e => e.X);
+        double minY = List.Min(e => e.Y);
+        double minZ = List.Min(e => e.Z);
 
+        _scaledList = new List<InformationSnippet>();
+        
         foreach (InformationSnippet entity in List)
         {
-            entity.X -= minX;
-            entity.Y -= minY;
-            entity.Z -= minZ;
+            _scaledList.Add(new InformationSnippet(entity, entity.X - minX, entity.Y - minY, entity.Z - minZ));
         }
     }
 
     public double GetMinX()
     {
-        return List.Select(e => e.X).Min();
+        if (ScaledList.Count > 0)
+        {
+            return ScaledList.Select(e => e.X).Min();
+        }
+
+        return 0.0;
     }
 
     public double GetMinY()
     {
-        return List.Select(e => e.Y).Min();
+        if (ScaledList.Count > 0)
+        {
+            return ScaledList.Select(e => e.Y).Min();
+        }
+
+        return 0.0;
     }
 
     public double GetMinZ()
     {
-        return List.Select(e => e.Z).Min();
+        if (ScaledList.Count > 0)
+        {
+            return ScaledList.Select(e => e.Z).Min();
+        }
+
+        return 0.0;
     }
 
     public double GetMaxX()
     {
-        return List.Select(e => e.X).Max();
+        if (ScaledList.Count > 0)
+        {
+            return ScaledList.Select(e => e.X).Max();
+        }
+
+        return 0.0;
     }
 
     public double GetMaxY()
     {
-        return List.Select(e => e.Y).Max();
+        if (ScaledList.Count > 0)
+        {
+            return ScaledList.Select(e => e.Y).Max();
+        }
+
+        return 0.0;
     }
-    
+
     public double GetMaxZ()
     {
-        return List.Select(e => e.Z).Max();
+        if (ScaledList.Count > 0)
+        {
+            return ScaledList.Select(e => e.Z).Max();
+        }
+
+        return 0.0;
+    }
+
+    public int GetGridLowestX()
+    {
+        if (List.Count > 0)
+        {
+            return List.Select(e => e.XGrid).Min();
+        }
+
+        return 0;
+    }
+
+    public int GetGridLargestX()
+    {
+        if (List.Count > 0)
+        {
+            return List.Select(e => e.XGrid).Max();
+        }
+
+        return 0;
+    }
+
+    public int GetGridLowestY()
+    {
+        if (List.Count > 0)
+        {
+            return List.Select(e => e.YGrid).Min();
+        }
+
+        return 0;
+    }
+
+    public int GetGridLargestY()
+    {
+        if (List.Count > 0)
+        {
+            return List.Select(e => e.YGrid).Max();
+        }
+
+        return 0;
+    }
+
+    public List<InformationSnippet> GetGridFieldContent(int i, int i1)
+    {
+        return List
+            .Where(e => e.XGrid.Equals(i))
+            .Where(e => e.YGrid.Equals(i1))
+            .ToList();
     }
 }
 
 public class InformationSnippet
 {
+    public InformationSnippet(InformationSnippet snippet, double x, double y, double z)
+    {
+        Type = snippet.Type;
+        Grid = snippet.Grid;
+        X = x;
+        Y = y;
+        Z = z;
+    }
+
+    public InformationSnippet()
+    {
+    }
+
     public double X { get; set; }
     public double Y { get; set; }
     public double Z { get; set; }
     public string Type { get; init; } = "";
+    public string Grid { get; set; } = "";
+
+    public int XGrid => GetGridX();
+
+    public int YGrid => GetGridY();
+
     public override string ToString()
     {
         return $"{X} - {Y} - {Z}: Type {Type}";
+    }
+
+    private int GetGridX()
+    {
+        return Convert.ToInt32(Grid.Split("_")[0]);
+    }
+
+    private int GetGridY()
+    {
+        return Convert.ToInt32(Grid.Split("_")[1]);
     }
 
     public double[] ConvertToECEF()

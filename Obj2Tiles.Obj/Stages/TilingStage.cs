@@ -8,37 +8,23 @@ namespace Obj2Tiles.Obj.Stages;
 
 public static partial class StagesFacade
 {
-    // Where is it?
-    private static readonly GpsCoords DefaultGpsCoords = new()
-    {
-        Altitude = 0,
-        Latitude = 45.46424200394995,
-        Longitude = 9.190277486808588
-    };
-
-    public static TileObjectStorage Tile(string sourcePath, string destPath, int lods, Dictionary<string, Box3>[] boundsMapper, 
+    public static TileObjectStorage Tile(string sourcePath, string destPath, int loDs, Dictionary<string, Box3>[] boundsMapper, 
         GpsCoords? coords = null)
     {
         TileObjectStorage storage = new TileObjectStorage();
         
         Logging.Info("Working on objs conversion");
 
-        ConvertAllB3dm(sourcePath, destPath, lods);
+        ConvertAllB3dm(sourcePath, destPath, loDs);
 
         Logging.Info("Generating tileset.json");
-
-        if (coords == null)
-        {
-            Logging.Info("Using default coordinates");
-            coords = DefaultGpsCoords;
-        }
 
         // Don't ask me why 100, I have no idea but it works
         // https://github.com/CesiumGS/3d-tiles/issues/162
         const int baseError = 100;
 
         // Generate tileset.json
-        var tileset = new Tileset
+        Tileset tileset = new Tileset
         {
             Asset = new Asset { Version = "1.0" },
             GeometricError = baseError,
@@ -47,29 +33,29 @@ public static partial class StagesFacade
                 GeometricError = baseError,
                 Refine = "ADD",
 
-                Transform = coords.ToEcefTransform(),
+                Transform = GetEcefTransformation(coords),
                 Children = new List<TileElement>()
             }
         };
 
-        var maxX = double.MinValue;
-        var minX = double.MaxValue;
-        var maxY = double.MinValue;
-        var minY = double.MaxValue;
-        var maxZ = double.MinValue;
-        var minZ = double.MaxValue;
+        double maxX = double.MinValue;
+        double minX = double.MaxValue;
+        double maxY = double.MinValue;
+        double minY = double.MaxValue;
+        double maxZ = double.MinValue;
+        double minZ = double.MaxValue;
 
-        var masterDescriptors = boundsMapper[0].Keys;
+        Dictionary<string, Box3>.KeyCollection masterDescriptors = boundsMapper[0].Keys;
 
-        foreach (var descriptor in masterDescriptors)
+        foreach (string descriptor in masterDescriptors)
         {
-            var currentTileElement = tileset.Root;
+            TileElement? currentTileElement = tileset.Root;
 
-            var refBox = boundsMapper[0][descriptor];
+            Box3 refBox = boundsMapper[0][descriptor];
 
-            for (var lod = lods - 1; lod >= 0; lod--)
+            for (int lod = loDs - 1; lod >= 0; lod--)
             {
-                var box3 = boundsMapper[lod][descriptor];
+                Box3 box3 = boundsMapper[lod][descriptor];
 
                 if (box3.Min.X < minX)
                     minX = box3.Min.X;
@@ -89,7 +75,7 @@ public static partial class StagesFacade
                 if (box3.Max.Z > maxZ)
                     maxZ = box3.Max.Z;
 
-                var tile = new TileElement
+                TileElement tile = new TileElement
                 {
                     GeometricError = lod == 0 ? 0 : CalculateGeometricError(refBox, box3, lod),
                     Refine = "REPLACE",
@@ -106,44 +92,56 @@ public static partial class StagesFacade
             }
         }
 
-        var globalBox = new Box3(minX, minY, minZ, maxX, maxY, maxZ);
+        Box3 globalBox = new Box3(minX, minY, minZ, maxX, maxY, maxZ);
 
         tileset.Root.BoundingVolume = globalBox.ToBoundingVolume();
 
         string path = Path.Combine(destPath, "tileset.json");
 
-        storage.filePath = path;
-        storage.BoudingBox = globalBox.ToBoundingVolume();
+        storage.filePathAbsolute = path;
 
         File.WriteAllText(path,
             JsonConvert.SerializeObject(tileset, Formatting.Indented));
+        storage.RetrieveFileProperties();
         return storage;
+    }
+
+    private static double[]? GetEcefTransformation(GpsCoords? coords)
+    {
+        if (coords == null)
+        {
+            return new double[] { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1 };
+        }
+        else
+        {
+            return coords.ToEcefTransform();
+        }
     }
 
     // Calculate mesh geometric error
     private static double CalculateGeometricError(Box3 refBox, Box3 box, int lod)
     {
-        var dW = Math.Abs(refBox.Width - box.Width) / box.Width + 1;
-        var dH = Math.Abs(refBox.Height - box.Height) / box.Height + 1;
-        var dD = Math.Abs(refBox.Depth - box.Depth) / box.Depth + 1;
+        double dW = Math.Abs(refBox.Width - box.Width) / box.Width + 1;
+        double dH = Math.Abs(refBox.Height - box.Height) / box.Height + 1;
+        double dD = Math.Abs(refBox.Depth - box.Depth) / box.Depth + 1;
 
         return Math.Pow(dW + dH + dD, lod);
     }
 
     private static void ConvertAllB3dm(string sourcePath, string destPath, int lods)
     {
-        var filesToConvert = new List<Tuple<string, string>>();
+        List<Tuple<string, string>> filesToConvert = new List<Tuple<string, string>>();
 
-        for (var lod = 0; lod < lods; lod++)
+        for (int lod = 0; lod < lods; lod++)
         {
-            var files = Directory.GetFiles(Path.Combine(sourcePath, "LOD-" + lod), "*.obj");
+            string[] files = Directory.GetFiles(Path.Combine(sourcePath, "LOD-" + lod), "*.obj");
 
-            foreach (var file in files)
+            foreach (string file in files)
             {
-                var outputFolder = Path.Combine(destPath, "LOD-" + lod);
+                string outputFolder = Path.Combine(destPath, "LOD-" + lod);
                 Directory.CreateDirectory(outputFolder);
 
-                var outputFile = Path.Combine(outputFolder, Path.ChangeExtension(Path.GetFileName(file), ".b3dm"));
+                string outputFile = Path.Combine(outputFolder, Path.ChangeExtension(Path.GetFileName(file), ".b3dm"));
                 filesToConvert.Add(new Tuple<string, string>(file, outputFile));
             }
         }

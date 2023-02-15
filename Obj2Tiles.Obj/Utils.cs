@@ -116,8 +116,8 @@ public static class Utils
             {
                 //Center
                 box.Center.X,
-                box.Center.Y,
                 box.Center.Z,
+                box.Center.Y,
                 //X-Axis
                 box.Width / 2,
                 0,
