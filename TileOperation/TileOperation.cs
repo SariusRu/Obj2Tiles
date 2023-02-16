@@ -4,6 +4,7 @@ using log4net.Config;
 using MeshDecimatorCore;
 using Microsoft.VisualBasic.FileIO;
 using Newtonsoft.Json;
+using Obj2Tiles.Common;
 using Obj2Tiles.Library;
 using Obj2Tiles.Library.Geometry;
 using Obj2Tiles.Obj;

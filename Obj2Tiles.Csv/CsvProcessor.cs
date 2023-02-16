@@ -5,6 +5,7 @@ using log4net.Config;
 using Microsoft.VisualBasic.FileIO;
 using Newtonsoft.Json;
 using Obj2Tiles.Common;
+using Obj2Tiles.Csv.Tiling;
 using Obj2Tiles.Library;
 using Obj2Tiles.Obj;
 
@@ -15,7 +16,8 @@ public class CsvProcessor : IProcessor
     private readonly ILog _logger;
     private readonly Options _options;
     private Dictionary<string, string> Objects3D { get; }
-    private Dictionary<string, TileObjectStorage> Tiles { get; }
+
+    public Dictionary<string, TileObjectStorage> TiledObject3D { get; set; }
     private string InputCsvFile { get; }
     private List<string> InputModels { get; }
     private CsvInformationHolder FileInfo { get; set; }
@@ -29,7 +31,7 @@ public class CsvProcessor : IProcessor
         InputCsvFile = _options.Input;
         FileInfo = new CsvInformationHolder();
         Objects3D = new Dictionary<string, string>();
-        Tiles = new Dictionary<string, TileObjectStorage>();
+        TiledObject3D = new Dictionary<string, TileObjectStorage>();
         var logRepository = LogManager.GetRepository(Assembly.GetEntryAssembly());
         XmlConfigurator.Configure(logRepository, new FileInfo("log4net.config"));
         LodLevel = new Dictionary<int, LodLevel>();
@@ -52,44 +54,89 @@ public class CsvProcessor : IProcessor
                 TileLevelTiles(lod);
                 lod++;
             }
-
-            ApplyTransformations();
-
+            lod--;
+            ApplyTransformations(lod);
+            _logger.Error("################");
+            _logger.Error("COMPLETED TILING");
+            _logger.Error("################");
         }
         catch (Exception ex)
         {
             _logger.Error("Exception: ", ex);
         }
-
-        
-
-        _logger.Info("Preparing Tile-Writer");
-
-        //if (_options.Latitude.HasValue && _options.Longitude.HasValue)
-        //{
-        //    new GpsCoords()
-        //    {
-        //        Altitude = _options.Altitude,
-        //        Longitude = _options.Longitude.Value,
-        //        Latitude = _options.Latitude.Value
-        //    };
-        //}
     }
 
-    private void ApplyTransformations()
+    private void ApplyTransformations(int lod)
     {
         Logging.Info("Applying Tranformations");
-        //Starting with highest LOD, working our way inwards. Every file is opened, and then analyzed
-        List<ITile> tiles = LodLevel[3].Tiles;
-        
-        Tileset tile = JsonConvert.DeserializeObject<Tileset>(File.ReadAllText(tiles.FirstOrDefault().Path));
-        tile.Root.Transform = tiles.FirstOrDefault().ToEcef();
-        JsonSerializerSettings settings = new JsonSerializerSettings()
+        while (lod > 0)
         {
-            NullValueHandling = NullValueHandling.Ignore
+            Logging.Info($"Processing LOD {lod}");
+            List<ITile> tiles = LodLevel[lod].Tiles;
+            foreach (ITile tileData in tiles)
+            {
+                Logging.Info($"Processing LOD {lod}, Tile {tileData.GetName()}");
+                Tileset tile = JsonConvert.DeserializeObject<Tileset>(File.ReadAllText(tileData.Path));
+
+                //Get CenterCoords of parentTile and create difference
+                try
+                {
+
+                    ITile parent = null;
+                    List<ITile> posTiles = LodLevel[lod + 1].Tiles;
+
+                    foreach (ITile posTile in posTiles)
+                    {
+                        if (posTile is LodTiles posLodTile)
+                        {
+                            var foundTile = posLodTile.Tiles.Where(e => e.Y.Equals(tileData.Y)).FirstOrDefault(e => e.X.Equals(tileData.X));
+                            if (foundTile != null)
+                            {
+                                parent = posTile;
+                            }
+                        }
+                    }
+
+                    UtmCoords currentTileCoords = tileData.CenterCoords;
+                    UtmCoords parentTileCoords = parent.CenterCoords;
+
+                    double diffX = parentTileCoords.X - currentTileCoords.X;
+                    double diffY = parentTileCoords.Y - currentTileCoords.Y;
+                    double diffZ = parentTileCoords.Altitude - currentTileCoords.Altitude;
+
+                    tile.Root.Transform = EcefTransform(diffX, diffY, diffZ);
+
+                }
+                catch
+                {
+                    _logger.Warn("Error while retrieving parent center coords");
+                    UtmCoords coords = tileData.CenterCoords;
+                    GpsCoords geoCoords = coords.ToGpsCoords();
+                    tile.Root.Transform = geoCoords.ToEcefTransform();
+                }
+                
+                
+                
+                JsonSerializerSettings settings = new JsonSerializerSettings()
+                {
+                    NullValueHandling = NullValueHandling.Ignore
+                };
+                File.WriteAllText(tiles.FirstOrDefault().Path,
+                    JsonConvert.SerializeObject(tile, settings));
+            }
+            lod--;
+        }
+    }
+
+    private double[]? EcefTransform(double diffX, double diffY, double diffZ)
+    {
+        return new[]
+        {
+            1.0, 0.0, 0.0, 0.0,
+            0.0, 1.0, 0.0, 0.0,
+            0.0, 0.0, 1.0, 0.0,
+            diffX, diffY, diffZ, 1.0
         };
-        File.WriteAllText(tiles.FirstOrDefault().Path,
-            JsonConvert.SerializeObject(tile, settings));
     }
 
     private void TileLevelTiles(int lod)
@@ -135,7 +182,7 @@ public class CsvProcessor : IProcessor
             {
                 field.Path = tempFolder;
                 Directory.CreateDirectory(field.Path);
-                field.Path = Tiling.TileLod(field, _logger);
+                field.Path = Tiler.TileLod(field, _logger);
             }
             catch (Exception ex)
             {
@@ -152,11 +199,14 @@ public class CsvProcessor : IProcessor
         Logging.Info($"Tiling tiles for Level {0}");
         string tempBaseFolder = TempFolder.CreateTempFolder(_options.UseSystemTempFolder, _options.Output);
         string tempFolder = Path.Combine(tempBaseFolder, output);
-        foreach (KeyValuePair<string, TileObjectStorage> element in Tiles)
+
+        foreach (KeyValuePair<string, TileObjectStorage> tile in TiledObject3D)
         {
-            element.Value.filePathRelative = "." + element.Value.filePathAbsolute.Replace(tempBaseFolder, "");
-            element.Value.filePathRelative = element.Value.filePathRelative.Replace("\\", "/");
+            tile.Value.RetrieveFileProperties();
+            tile.Value.filePathRelative = "." + tile.Value.filePathAbsolute.Replace(tempBaseFolder, "");
+            tile.Value.filePathRelative = tile.Value.filePathRelative.Replace("\\", "/");
         }
+        
         foreach (ITile fieldElement in LodLevel[0].Tiles)
         {
             if (fieldElement is GridField field)
@@ -165,15 +215,11 @@ public class CsvProcessor : IProcessor
                 {
                     field.Path = tempFolder;
                     Directory.CreateDirectory(field.Path);
-                    foreach (KeyValuePair<string, TileObjectStorage> tile in Tiles)
-                    {
-                        tile.Value.RetrieveFileProperties();
-                    }
-                    field.Path = Tiling.Tile(field, field.Path, field.Path, _options.LoDs, field.List, _logger, Tiles);
+                    field.Path = Tiler.TileLOD0(field, field.List, _logger, TiledObject3D);
                 }
                 catch (Exception ex)
                 {
-                    _logger.Error("Something went wrong while tiling", ex);
+                    _logger.Error("Something went wrong while tiling a LOD0-Tile", ex);
                 }
             }
         }
@@ -182,13 +228,13 @@ public class CsvProcessor : IProcessor
 
     private void PopulateLod0()
     {
-        //int minX = fileInfo.GetGridLowestX();
+        int minX = FileInfo.GetGridLowestX();
         int maxX = FileInfo.GetGridLargestX();
-        //int minY = fileInfo.GetGridLowestY();
+        int minY = FileInfo.GetGridLowestY();
         int maxY = FileInfo.GetGridLargestY();
-        for(int i = 0; i <= maxX; i++)
+        for(int i = minX; i <= maxX; i++)
         {
-            for (int j = 0; j <= maxY; j++)
+            for (int j = minY; j <= maxY; j++)
             {
                 List<InformationSnippet> snippet = FileInfo.GetGridFieldContent(i, j);
                 LodLevel[0].AddGridField(i, j, snippet);
@@ -225,7 +271,7 @@ public class CsvProcessor : IProcessor
         int xDim = FileInfo.GetGridXDimension();
         int yDim = FileInfo.GetGridYDimension();
 
-        int loDs = GetLoDs(xDim, yDim, (double)TilesPerLod/2);
+        int loDs = GetLoDs(xDim, yDim, Math.Sqrt(TilesPerLod));
         loDs++;
         while (loDs >= 0)
         {
@@ -391,7 +437,7 @@ public class CsvProcessor : IProcessor
                     filePathAbsolute = outputFileName
                 };
                 result.RetrieveFileProperties();
-                Tiles.Add(file.Key, result);
+                TiledObject3D.Add(file.Key, result);
             }
         }
         else
@@ -415,7 +461,7 @@ public class CsvProcessor : IProcessor
         ObjProcessor process = new ObjProcessor(pipelineId);
         TileObjectStorage result = await process.ProcessObj(output, input, Stage.Tiling, pipelineId, lod, divisions, keepIntermediate,
             splitZ, useSystem, sw, swg, _logger);
-        Tiles.Add(file.Key, result);
+        TiledObject3D.Add(file.Key, result);
     }
 
     private List<string> AnalyzeTileset(List<TileElement> rootChildren)

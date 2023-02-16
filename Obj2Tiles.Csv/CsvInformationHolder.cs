@@ -20,18 +20,31 @@ public class CsvInformationHolder
         }
     }
 
-    public (double, double, double) GetCenter()
+    public UtmCoords? GetCenter()
     {
-        double X = List.ElementAt(0).X;
-        double Y = List.ElementAt(0).Y;
-        double Z = List.ElementAt(0).Z;
-        foreach (InformationSnippet snippet in List.Skip(1))
+        try
         {
-            X += snippet.X / 2;
-            Y += snippet.Y / 2;
-            Z += snippet.Z / 2;
+            double X = List.ElementAt(0).X;
+            double Y = List.ElementAt(0).Y;
+            double Z = List.ElementAt(0).Z;
+            foreach (InformationSnippet snippet in List.Skip(1))
+            {
+                X += snippet.X;
+                X /= 2;
+                Y += snippet.Y;
+                Y /= 2;
+                Z += snippet.Z;
+                Z /= 2;
+            }
+
+            return new UtmCoords(X, Y, Z);
         }
-        return (X, Y, Z);
+        catch (Exception ex)
+        {
+            Logging.Warn("Failed to retrieve Center: List is probably empty");
+            return null;
+        }
+
     } 
     
     public CsvInformationHolder()
@@ -262,6 +275,7 @@ public class InformationSnippet
     public double Z { get; set; }
     public string Type { get; init; } = "";
     public string Grid { get; set; } = "";
+    public UtmCoords ScaledCoords { get; private set; }
 
     public int XGrid => GetGridX();
 
@@ -285,5 +299,10 @@ public class InformationSnippet
     public double[] ConvertToECEF()
     {
         return new[] { 1.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, X, Z, Y, 1 };
+    }
+
+    public void ApplyScaledCoords(UtmCoords utmCoords)
+    {
+        ScaledCoords = utmCoords;
     }
 }

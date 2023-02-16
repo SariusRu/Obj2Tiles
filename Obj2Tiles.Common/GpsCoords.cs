@@ -1,4 +1,4 @@
-namespace Obj2Tiles.Stages.Model;
+namespace Obj2Tiles.Common;
 
 public class GpsCoords
 {

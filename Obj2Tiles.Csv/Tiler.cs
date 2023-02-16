@@ -1,72 +1,54 @@
 ﻿using System.Diagnostics;
+using System.Text.RegularExpressions;
 using log4net;
 using Newtonsoft.Json;
 using Obj2Tiles.Common;
+using Obj2Tiles.Csv.Tiling;
 using Obj2Tiles.Library;
 using Obj2Tiles.Library.Geometry;
 using Obj2Tiles.Obj;
-using Obj2Tiles.Stages.Model;
 
 namespace Obj2Tiles.Csv;
 
-public class Tiling
+public class Tiler
 {
-    private static readonly GpsCoords DefaultGpsCoords = new()
-    {
-        Altitude = 200,
-        Latitude = 44.56573501069636,
-        Longitude = -123.27892951523633,
-    };
-
-
-    public static string Tile(GridField field,
-        string sourcePath,
-        string destPath,
-        int lods,
+    public static string TileLOD0(GridField field,
         CsvInformationHolder csvInformationHolders,
         ILog logger,
-        Dictionary<string, TileObjectStorage> tilesInformation,
-        GpsCoords? coords = null)
+        Dictionary<string, TileObjectStorage> tilesInformation)
     {
         logger.Info("Generating tileset.json");
-        logger.Info("Using default coordinates");
-        coords = DefaultGpsCoords;
 
-        double baseError = GetError(csvInformationHolders);
-        baseError = 100;
+        double baseError = GetError(csvInformationHolders, tilesInformation);
 
-        // Load tileset to be inserted and add bounding volumes
-        // Problem at the moment: Bounding Volume uses only point information
-        // For now: Add biggest possible object to the elements
-
-        double xOffest = 0.0;
-        double yOffest = 0.0;
-        double zOffest = 0.0;
+        double xOffset = 0.0;
+        double yOffset = 0.0;
+        double zOffset = 0.0;
 
         foreach (TileObjectStorage tile in tilesInformation.Values)
         {
-            if (xOffest < Math.Abs(tile.BoudingBox.BoxOffsetX()))
+            if (xOffset < Math.Abs(tile.BoudingBox.BoxOffsetX()))
             {
-                xOffest = Math.Abs(tile.BoudingBox.BoxOffsetX());
+                xOffset = Math.Abs(tile.BoudingBox.BoxOffsetX());
             }
 
-            if (yOffest < Math.Abs(tile.BoudingBox.BoxOffsetY()))
+            if (yOffset < Math.Abs(tile.BoudingBox.BoxOffsetY()))
             {
-                yOffest = Math.Abs(tile.BoudingBox.BoxOffsetY());
+                yOffset = Math.Abs(tile.BoudingBox.BoxOffsetY());
             }
 
-            if (zOffest < Math.Abs(tile.BoudingBox.BoxOffsetZ()))
+            if (zOffset < Math.Abs(tile.BoudingBox.BoxOffsetZ()))
             {
-                zOffest = Math.Abs(tile.BoudingBox.BoxOffsetZ());
+                zOffset = Math.Abs(tile.BoudingBox.BoxOffsetZ());
             }
         }
 
-        double minX = csvInformationHolders.GetMinX() - xOffest;
-        double maxX = csvInformationHolders.GetMaxX() + xOffest;
-        double minY = csvInformationHolders.GetMinY() - yOffest;
-        double maxY = csvInformationHolders.GetMaxY() + yOffest;
-        double minZ = csvInformationHolders.GetMinZ() - zOffest;
-        double maxZ = csvInformationHolders.GetMaxZ() + zOffest;
+        double minX = csvInformationHolders.GetMinX() - xOffset;
+        double maxX = csvInformationHolders.GetMaxX() + xOffset;
+        double minY = csvInformationHolders.GetMinY() - yOffset;
+        double maxY = csvInformationHolders.GetMaxY() + yOffset;
+        double minZ = csvInformationHolders.GetMinZ() - zOffset;
+        double maxZ = csvInformationHolders.GetMaxZ() + zOffset;
 
         Tileset tileset = new Tileset
         {
@@ -76,15 +58,12 @@ public class Tiling
             {
                 GeometricError = baseError,
                 Refine = "ADD",
-                Transform = coords.ToEcefTransform(),
                 Children = new List<TileElement>()
             }
         };
 
         foreach (InformationSnippet element in csvInformationHolders.ScaledList)
         {
-            TileElement? currentTileElement = tileset.Root;
-
             TileElement tile = new TileElement
             {
                 GeometricError = tilesInformation[element.Type].geometricError,
@@ -98,7 +77,7 @@ public class Tiling
                 Transform = element.ConvertToECEF()
             };
 
-            currentTileElement.Children.Add(tile);
+            tileset.Root.Children.Add(tile);
         }
 
         //var masterDescriptors = boundsMapper[0].Keys;
@@ -111,7 +90,9 @@ public class Tiling
         {
             NullValueHandling = NullValueHandling.Ignore
         };
-        string filePath = Path.Combine(destPath, field.GetName()+".json");
+        string filePath = Path.Combine(field.Path, field.GetName()+".json");
+        field.Path = filePath;
+        CheckTileset(tileset);
         File.WriteAllText(filePath,
             JsonConvert.SerializeObject(tileset, settings));
         CheckFile(filePath);
@@ -125,33 +106,54 @@ public class Tiling
         ProcessStartInfo processInfo = new ProcessStartInfo("cmd.exe", "/c " + cmd);
         processInfo.UseShellExecute = false;
         processInfo.RedirectStandardOutput = true;
-
+        string output = "";
         int exitCode = 1;
         using (Process? process = Process.Start(processInfo))
         {
             if (process != null)
             {
-                string output = process.StandardOutput.ReadToEnd();
+                output = process.StandardOutput.ReadToEnd();
                 process.WaitForExit();
-                Logging.Info(output);
                 exitCode = process.ExitCode;
             }
         }
 
+        //Analyze Output
+        CheckOutput(output);
         Logging.Info($"Exited with {exitCode}");
+    }
+
+    private static void CheckOutput(string output)
+    {
+        MatchCollection matches = Regex.Matches(output, "Validation result:\n{\n  \"date\": \"[0-9-:ZT.]*\",\n  \"numErrors\": 0,\n  \"numWarnings\": 0,\n  \"numInfos\": 0\n}");
+        if (matches.Count != 1)
+        {
+            Logging.Warn(output);
+        }
+        Logging.Info("File checked");
+        
     }
 
     /// <summary>
     /// According to https://github.com/CesiumGS/3d-tiles/issues/162, it is best practice to use the diagonal as the geometric error?
     /// </summary>
     /// <param name="csvInformationHolders"></param>
+    /// <param name="tileObjectStorages"></param>
     /// <returns></returns>
-    private static double GetError(CsvInformationHolder csvInformationHolders)
+    private static double GetError(CsvInformationHolder csvInformationHolders,
+        Dictionary<string, TileObjectStorage> tileObjectStorages)
     {
         double widthM = csvInformationHolders.GetWidth();
         double heightM = csvInformationHolders.GetHeight();
-        //Diagonal
-        return Math.Sqrt(widthM * widthM + heightM * heightM);
+        double calculatedError = Math.Sqrt(widthM * widthM + heightM * heightM);
+        foreach (TileObjectStorage obj in tileObjectStorages.Values)
+        {
+            if (obj.geometricError > calculatedError)
+            {
+                calculatedError = obj.geometricError;
+            }
+        }
+        return calculatedError;
     }
 
     private static double GetError(List<ITile> field)
@@ -229,13 +231,37 @@ public class Tiling
                 NullValueHandling = NullValueHandling.Ignore
             };
             string filePath = Path.Combine(fieldPath.Path, fieldPath.GetName() + ".json");
+            CheckTileset(tileset);
             File.WriteAllText(filePath,
                 JsonConvert.SerializeObject(tileset, settings));
-            CheckFile(filePath);
+            //CheckFile(filePath);
             return filePath;
         }
 
         Logging.Warn("Expected LodTiles, but got LOD0-Tiles");
         return fieldPath.Path;
+    }
+
+    private static void CheckTileset(Tileset tileset)
+    {
+        //Check children
+        tileset.Root.Children = CheckChildren(tileset.Root.Children);
+    }
+
+    private static List<TileElement> CheckChildren(List<TileElement> children)
+    {
+        if (children.Count == 0)
+        {
+            //Logging.Info("Removed empty List");
+            return null;
+        }
+        else
+        {
+            foreach (var child in children)
+            {
+                child.Children = CheckChildren(child.Children);
+            }
+        }
+        return children;
     }
 }
